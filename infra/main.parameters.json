@@ -5,8 +5,11 @@
     "environmentName": { "value": "${AZURE_ENV_NAME}" },
     "location": { "value": "${AZURE_LOCATION}" },
     "notificationMode": { "value": "${AZD_CA_NOTIFICATION_MODE=none}" },
+    "adminTeamsDeliveryMode": { "value": "${AZD_CA_ADMIN_TEAMS_DELIVERY_MODE=adminConfigured}" },
     "adminTeamsWorkflowUrl": { "value": "${AZD_CA_ADMIN_TEAMS_WORKFLOW_URL}" },
     "userTeamsWorkflowUrl": { "value": "${AZD_CA_USER_TEAMS_WORKFLOW_URL}" },
+    "adminTeamsTeamId": { "value": "${AZD_CA_ADMIN_TEAMS_TEAM_ID}" },
+    "adminTeamsChannelId": { "value": "${AZD_CA_ADMIN_TEAMS_CHANNEL_ID}" },
     "logAnalyticsWorkspaceResourceId": { "value": "${AZD_CA_LOG_ANALYTICS_WORKSPACE_RESOURCE_ID}" },
     "logAnalyticsWorkspaceLocation": { "value": "${AZD_CA_LOG_ANALYTICS_WORKSPACE_LOCATION}" }
   }

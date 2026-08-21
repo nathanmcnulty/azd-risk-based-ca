@@ -2,6 +2,13 @@ param([ValidateSet('admin','user')][string]$Destination='admin', [string]$UserPr
 $ErrorActionPreference='Stop'; Set-StrictMode -Version Latest
 Import-Module (Join-Path $PSScriptRoot 'AzdRiskCa.Common.psm1') -Force
 Import-AzdEnvironment
+$configuration=Get-AzdRiskCaConfiguration
+if ($Destination -eq 'admin' -and $configuration.AdminTeamsDeliveryMode -eq 'adminConfigured') {
+    Import-Module (Join-Path $PSScriptRoot 'AzdRiskCa.Notifications.psm1') -Force
+    if (-not $env:AZD_CA_TEAMS_WORKFLOW_RESOURCE_ID) { throw 'AZD_CA_TEAMS_WORKFLOW_RESOURCE_ID is not configured. Complete infrastructure deployment first.' }
+    Test-AzdRiskCaTeamsWorkflowDelivery $env:AZD_CA_TEAMS_WORKFLOW_RESOURCE_ID
+    return
+}
 $variable=if($Destination -eq 'admin'){'AZD_CA_ADMIN_TEAMS_WORKFLOW_URL'}else{'AZD_CA_USER_TEAMS_WORKFLOW_URL'}
 $url=[Environment]::GetEnvironmentVariable($variable)
 if ([string]::IsNullOrWhiteSpace($url)) { throw "$variable is not configured." }

@@ -12,7 +12,7 @@
   "connections": [
     { "id": "azd", "name": "Azure Developer CLI", "required": true, "reason": "Manage environment values and optional Azure notification resources." },
     { "id": "azureCli", "name": "Azure CLI", "required": true, "scopes": ["https://management.azure.com/.default"], "reason": "Resolve the selected subscription and tenant." },
-    { "id": "graphPowerShell", "name": "Microsoft Graph PowerShell", "required": true, "scopes": ["Policy.Read.All", "Policy.ReadWrite.ConditionalAccess", "Group.Read.All", "RoleManagement.Read.Directory", "User.Read", "Application.Read.All", "AppRoleAssignment.ReadWrite.All"], "reason": "Plan and reconcile Conditional Access; User.Read resolves the signed-in operator only when no emergency group is supplied, and the last two scopes are selected only for Graph notifications." }
+    { "id": "graphPowerShell", "name": "Microsoft Graph PowerShell", "required": true, "scopes": ["Policy.Read.All", "Policy.ReadWrite.ConditionalAccess", "Group.Read.All", "RoleManagement.Read.Directory", "User.Read"], "reason": "Plan and reconcile Conditional Access. The normal WAM/browser connection requests administrator consent when these privileged delegated scopes have not been granted." }
   ],
   "configuration": {
     "groups": [
@@ -34,12 +34,38 @@
         "title": "Optional Teams notifications",
         "fields": [
           { "id": "mode", "environmentVariable": "AZD_CA_NOTIFICATION_MODE", "label": "Backend", "type": "select", "required": true, "default": "none", "options": [{ "label": "Disabled", "value": "none" }, { "label": "Graph polling", "value": "graph" }, { "label": "Existing Log Analytics", "value": "logAnalytics" }] },
-          { "id": "adminUrl", "environmentVariable": "AZD_CA_ADMIN_TEAMS_WORKFLOW_URL", "label": "Admin Teams Workflow callback", "type": "secret", "sensitive": true, "condition": { "field": "mode", "notEquals": "none" } },
+          { "id": "adminDelivery", "environmentVariable": "AZD_CA_ADMIN_TEAMS_DELIVERY_MODE", "label": "Admin Teams delivery", "type": "select", "required": true, "default": "adminConfigured", "options": [{ "label": "Guided API connection", "value": "adminConfigured" }, { "label": "Existing Workflow webhook", "value": "workflowWebhook" }] },
+          { "id": "channelLink", "environmentVariable": "AZD_CA_ADMIN_TEAMS_CHANNEL_LINK", "label": "Admin Teams channel link", "type": "text", "condition": { "field": "adminDelivery", "equals": "adminConfigured" }, "help": "In Teams, right-click the destination channel and select Copy link. Deployment resolves and validates the tenant, team, and channel IDs." },
+          { "id": "adminUrl", "environmentVariable": "AZD_CA_ADMIN_TEAMS_WORKFLOW_URL", "label": "Existing admin Teams Workflow callback", "type": "secret", "sensitive": true, "condition": { "field": "adminDelivery", "equals": "workflowWebhook" } },
           { "id": "userUrl", "environmentVariable": "AZD_CA_USER_TEAMS_WORKFLOW_URL", "label": "Optional user Teams Workflow callback", "type": "secret", "sensitive": true, "condition": { "field": "mode", "notEquals": "none" } },
+          { "id": "testDelivery", "environmentVariable": "AZD_CA_TEST_TEAMS_DELIVERY", "label": "Send a labeled delivery test", "type": "boolean", "default": false, "condition": { "field": "mode", "notEquals": "none" } },
           { "id": "workspace", "environmentVariable": "AZD_CA_LOG_ANALYTICS_WORKSPACE_RESOURCE_ID", "label": "Existing workspace resource ID", "type": "text", "condition": { "field": "mode", "equals": "logAnalytics" } },
           { "id": "workspaceLocation", "environmentVariable": "AZD_CA_LOG_ANALYTICS_WORKSPACE_LOCATION", "label": "Workspace location", "type": "location", "condition": { "field": "mode", "equals": "logAnalytics" } }
         ]
       }
     ]
-  }
+  },
+  "permissionChecks": [
+    {
+      "id": "azure-subscription-access",
+      "name": "Azure subscription access",
+      "provider": "azure",
+      "required": true,
+      "description": "Azure CLI can complete a live ARM read of the selected enabled subscription in the selected tenant."
+    },
+    {
+      "id": "graph-delegated-scopes",
+      "name": "Microsoft Graph delegated consent",
+      "provider": "graph",
+      "required": true,
+      "description": "Microsoft Graph PowerShell is connected to the selected tenant with every baseline delegated scope. Reconnect with the standard WAM/browser flow to complete administrator consent when prompted."
+    },
+    {
+      "id": "entra-directory-access",
+      "name": "Microsoft Entra directory access",
+      "provider": "graph",
+      "required": true,
+      "description": "The selected tenant is readable before setup hooks plan Conditional Access changes."
+    }
+  ]
 }

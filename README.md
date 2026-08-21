@@ -13,7 +13,7 @@ The five baseline payloads are normalized from `Entra/conditional-access/risk-po
 - A matching name is not ownership. An unrecorded match stops the plan unless `AZD_CA_ADOPT_EXISTING=true`; adopted state is saved for cleanup restoration.
 - The requested `mfa` plus `riskRemediation` `AND` grant is sent as-is through the Graph beta Conditional Access endpoint because v1.0 returns errors 1037/1038 for this portal-supported preview policy. The other eight policies and non-preview resources remain on v1.0. A Graph rejection stops deployment; the solution does not substitute password change or authentication strength and does not continue legacy cutover.
 - `azd down` preserves Entra objects. `AZD_CA_CLEANUP=true` explicitly deletes created policies, restores adopted policies, and deletes a created TAP strength only when no policy still references it.
-- Teams callback URLs are secure deployment parameters/application settings, excluded from plan and status reports, and never deployment outputs.
+- Existing Teams Workflow callback URLs are secure deployment parameters/application settings, excluded from plan and status reports, and never deployment outputs. The default guided mode creates a tenant-local Teams API connection and never emits its generated Logic App callback.
 
 ## Policies
 
@@ -47,7 +47,11 @@ azd env set AZD_CA_ADDITIONAL_EXCLUDE_GROUP_IDS '<group-id>;<group-id>'
 azd provision
 ```
 
-The base delegated scopes are `Policy.Read.All`, `Policy.ReadWrite.ConditionalAccess`, `Group.Read.All`, `RoleManagement.Read.Directory`, and `User.Read`. `User.Read` resolves only the signed-in operator when the emergency group is omitted. Graph notifications additionally request `Application.Read.All` and `AppRoleAssignment.ReadWrite.All` so postprovision can grant the Function identity the `IdentityRiskEvent.Read.All` application role. Optional permissions are not requested in other modes.
+The base delegated scopes are `Policy.Read.All`, `Policy.ReadWrite.ConditionalAccess`, `Group.Read.All`, `RoleManagement.Read.Directory`, and `User.Read`. `User.Read` resolves only the signed-in operator when the emergency group is omitted. Azure Deployment Studio checks these manifest-declared scopes before preview and its Microsoft Graph connection uses ordinary `Connect-MgGraph`, allowing the OS broker/browser to show the administrator-consent prompt when required. CLI-only deployment performs the same scoped connection in `preprovision`.
+
+Graph notifications additionally request `Application.Read.All` and `AppRoleAssignment.ReadWrite.All` during `preprovision` so `postprovision` can grant the Function identity the `IdentityRiskEvent.Read.All` application role. This is an incremental browser consent request only when Graph notifications are selected; optional permissions are not requested in other modes. The Function identity grant is then made explicitly and verified after Azure deployment.
+
+`preprovision` checks `Get-MgContext` for the selected tenant and granted scopes, then performs a minimal `/me?$select=id` read. The API read is intentional: Graph PowerShell can expose persisted context metadata before the current hook process has acquired a usable WAM token. This makes a canceled broker or incomplete consent fail before policy discovery or any deployment write.
 
 After reviewing report-only results and Conditional Access What If outcomes:
 
@@ -71,8 +75,11 @@ Review sign-in logs for at least the organization's normal access cycle before e
 | `AZD_CA_ADOPT_EXISTING` | `false` | Permit reviewed adoption of same-name policies/strength |
 | `AZD_CA_GRAPH_AUTHENTICATION_METHOD` | `browser` | Standard cached WAM/OS broker or interactive browser authentication; device-code flow is not supported |
 | `AZD_CA_NOTIFICATION_MODE` | `none` | `none`, `graph`, or `logAnalytics`; exactly one backend per environment |
-| `AZD_CA_ADMIN_TEAMS_WORKFLOW_URL` | empty | Required bearer-secret callback when notifications are enabled |
+| `AZD_CA_ADMIN_TEAMS_DELIVERY_MODE` | `adminConfigured` | Guided `Microsoft.Web/connections` OAuth authorization, or `workflowWebhook` to reuse a callback |
+| `AZD_CA_ADMIN_TEAMS_CHANNEL_LINK` | empty | Teams channel link used to tenant-validate and resolve the guided connection target |
+| `AZD_CA_ADMIN_TEAMS_WORKFLOW_URL` | empty | Required bearer-secret callback only for `workflowWebhook` delivery |
 | `AZD_CA_USER_TEAMS_WORKFLOW_URL` | empty | Optional callback accepting a minimized card and `recipientUpn` |
+| `AZD_CA_TEST_TEAMS_DELIVERY` | `false` | Send a labeled card and require a successful Logic App run on every deployment |
 | `AZD_CA_LOG_ANALYTICS_WORKSPACE_RESOURCE_ID` | empty | Required existing workspace for `logAnalytics`; no workspace is created by that mode |
 | `AZD_CA_LOG_ANALYTICS_WORKSPACE_LOCATION` | empty | Region of the existing workspace |
 | `AZD_CA_CLEANUP` | `false` | Explicit tenant-object cleanup during `azd down` |
@@ -83,12 +90,25 @@ Review sign-in logs for at least the organization's normal access cycle before e
 
 `logAnalytics` requires an existing workspace already receiving `RiskyUsers` and `UserRiskEvents` into `AADRiskyUsers` and `AADUserRiskEvents`. It creates a five-minute scheduled query alert, Consumption Logic App, action group, and managed-identity blob checkpoints/dead letters. It neither creates a workspace nor requires Sentinel. Its first workflow invocation creates a seed marker without posting the triggering historical event.
 
-Both paths use a versioned envelope containing event ID, detection time, user identifiers, risk type/level/state, source, and investigation URL. The optional user workflow is limited to internal UPNs and receives only generic account-security guidance—no IP, location, detection mechanics, or investigation detail. See [Teams Workflow setup](docs/teams-workflow-setup.md), then run:
+Both paths use a versioned envelope containing event ID, detection time, user identifiers, risk type/level/state, source, and investigation URL. By default, deployment creates a Teams managed API connection and a disabled HTTP-triggered delivery Logic App. Postprovision requests a short-lived authorization link through `listConsentLinks`, opens the normal browser OAuth flow for the durable notification account, verifies the connection, enables the Logic App, and sends one labeled card on first authorization. The callback stays inside the deployment and the delivery endpoint returns success only after the Teams connector action succeeds.
+
+Set the target before deployment:
+
+```powershell
+azd env set AZD_CA_ADMIN_TEAMS_CHANNEL_LINK '<link copied from Teams>'
+```
+
+For unattended or centrally managed scenarios, set `AZD_CA_ADMIN_TEAMS_DELIVERY_MODE=workflowWebhook` and supply `AZD_CA_ADMIN_TEAMS_WORKFLOW_URL` instead. A pre-existing webhook remains a bearer secret and its downstream connector health must be verified separately.
+
+The optional user workflow is limited to internal UPNs and receives only generic account-security guidance—no IP, location, detection mechanics, or investigation detail. See [Teams delivery setup](docs/teams-workflow-setup.md), then run:
 
 ```powershell
 ./scripts/Test-TeamsDelivery.ps1 -Destination admin
 ./scripts/Test-TeamsDelivery.ps1 -Destination user -UserPrincipalName 'you@contoso.com'
+./scripts/Test-GraphPoller.ps1 # graph mode only; invokes the timer and verifies checkpoint state
 ```
+
+The admin test retrieves the generated callback without displaying it and waits for a successful Logic App run. Set `AZD_CA_TEST_TEAMS_DELIVERY=true` to repeat that end-to-end test during every deployment; otherwise it runs automatically only after initial guided authorization.
 
 Five-minute Graph polling is about 8,640 executions/month and normally fits within shared Flex Consumption grants at low volume. Log Analytics is economical when the risk tables are already ingested, but ingestion and alert evaluation remain billable.
 
@@ -115,7 +135,7 @@ npm test
 Pop-Location
 ```
 
-Postprovision re-reads every managed policy by recorded object ID and compares the normalized desired request shape with actual Graph state. It writes `reports/azd-risk-ca-applied.json` and fails if any object differs. No live tenant deployment is performed by the test suite or CI.
+Postprovision re-reads every managed policy by recorded object ID and compares the normalized desired request shape with actual Graph state. It writes `reports/azd-risk-ca-applied.json` and fails if any object differs. Policy application is compensating-transactional: if a later Graph write fails, objects changed during that run are restored in reverse order. If compensation itself is incomplete, the checkpoint is preserved for explicit cleanup and the deployment reports the affected actions. No live tenant deployment is performed by the test suite or CI.
 
 ## Microsoft references
 

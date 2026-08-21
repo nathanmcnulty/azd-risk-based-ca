@@ -72,6 +72,27 @@ function Assert-AzdRiskCaTenantConfirmation {
     if ([string]::IsNullOrWhiteSpace($Actual) -or $Actual.Trim() -ne $ExpectedTenantId) { throw 'Tenant confirmation did not match. The requested state transition was cancelled.' }
 }
 
+function ConvertFrom-AzdRiskCaTeamsChannelLink {
+    [CmdletBinding()] param([Parameter(Mandatory)][string]$ChannelLink, [Parameter(Mandatory)][guid]$TenantId)
+    try {
+        $channelUri=[uri]$ChannelLink
+        if ($channelUri.Scheme -ne 'https') { throw 'unsupported scheme' }
+        $segments=@($channelUri.AbsolutePath.Trim('/').Split('/') | ForEach-Object { [uri]::UnescapeDataString($_) })
+        if ($segments.Count -lt 4 -or $segments[0] -ne 'l' -or $segments[1] -ne 'channel') { throw 'unsupported path' }
+        $query=[System.Web.HttpUtility]::ParseQueryString($channelUri.Query)
+        $channelId=$segments[2]
+        $teamId=$query['groupId']
+        $channelTenantId=$query['tenantId']
+    } catch { throw 'AZD_CA_ADMIN_TEAMS_CHANNEL_LINK must be a channel link copied from Microsoft Teams.' }
+    $parsedTeamId=[guid]::Empty
+    $parsedTenantId=[guid]::Empty
+    if (-not [guid]::TryParse($teamId,[ref]$parsedTeamId) -or [string]::IsNullOrWhiteSpace($channelId) -or -not [guid]::TryParse($channelTenantId,[ref]$parsedTenantId)) {
+        throw 'Unable to resolve the team, channel, and tenant IDs from AZD_CA_ADMIN_TEAMS_CHANNEL_LINK.'
+    }
+    if ($parsedTenantId -ne $TenantId) { throw "The Teams channel tenant '$parsedTenantId' does not match deployment tenant '$TenantId'." }
+    return [pscustomobject]@{ TeamId=$parsedTeamId.Guid; ChannelId=$channelId; TenantId=$parsedTenantId.Guid }
+}
+
 function Get-AzdRiskCaConfiguration {
     [CmdletBinding()] param()
     $additional = @(ConvertFrom-AzdRiskCaList $env:AZD_CA_ADDITIONAL_EXCLUDE_GROUP_IDS)
@@ -89,15 +110,25 @@ function Get-AzdRiskCaConfiguration {
         AdoptExisting = ConvertTo-AzdRiskCaBoolean $env:AZD_CA_ADOPT_EXISTING $false 'AZD_CA_ADOPT_EXISTING'
         GraphAuthenticationMethod = Resolve-AzdRiskCaChoice $env:AZD_CA_GRAPH_AUTHENTICATION_METHOD 'browser' @('browser') 'AZD_CA_GRAPH_AUTHENTICATION_METHOD'
         NotificationMode = Resolve-AzdRiskCaChoice $env:AZD_CA_NOTIFICATION_MODE 'none' @('none','graph','logAnalytics') 'AZD_CA_NOTIFICATION_MODE'
+        AdminTeamsDeliveryMode = Resolve-AzdRiskCaChoice $env:AZD_CA_ADMIN_TEAMS_DELIVERY_MODE 'adminConfigured' @('adminConfigured','workflowWebhook') 'AZD_CA_ADMIN_TEAMS_DELIVERY_MODE'
         AdminTeamsWorkflowUrl = ([string]$env:AZD_CA_ADMIN_TEAMS_WORKFLOW_URL).Trim()
         UserTeamsWorkflowUrl = ([string]$env:AZD_CA_USER_TEAMS_WORKFLOW_URL).Trim()
+        AdminTeamsChannelLink = ([string]$env:AZD_CA_ADMIN_TEAMS_CHANNEL_LINK).Trim()
+        AdminTeamsTeamId = ([string]$env:AZD_CA_ADMIN_TEAMS_TEAM_ID).Trim()
+        AdminTeamsChannelId = ([string]$env:AZD_CA_ADMIN_TEAMS_CHANNEL_ID).Trim()
         LogAnalyticsWorkspaceResourceId = ([string]$env:AZD_CA_LOG_ANALYTICS_WORKSPACE_RESOURCE_ID).Trim()
         LogAnalyticsWorkspaceLocation = ([string]$env:AZD_CA_LOG_ANALYTICS_WORKSPACE_LOCATION).Trim()
         Cleanup = ConvertTo-AzdRiskCaBoolean $env:AZD_CA_CLEANUP $false 'AZD_CA_CLEANUP'
     }
     if ($configuration.NotificationMode -ne 'none') {
-        Assert-AzdRiskCaHttpsSecret $configuration.AdminTeamsWorkflowUrl 'AZD_CA_ADMIN_TEAMS_WORKFLOW_URL' -Required
         Assert-AzdRiskCaHttpsSecret $configuration.UserTeamsWorkflowUrl 'AZD_CA_USER_TEAMS_WORKFLOW_URL'
+        if ($configuration.AdminTeamsDeliveryMode -eq 'workflowWebhook') {
+            Assert-AzdRiskCaHttpsSecret $configuration.AdminTeamsWorkflowUrl 'AZD_CA_ADMIN_TEAMS_WORKFLOW_URL' -Required
+            if ($configuration.AdminTeamsChannelLink -or $configuration.AdminTeamsTeamId -or $configuration.AdminTeamsChannelId) { throw 'Teams channel inputs must be empty when workflowWebhook delivery is selected.' }
+        } else {
+            if ($configuration.AdminTeamsWorkflowUrl) { throw 'AZD_CA_ADMIN_TEAMS_WORKFLOW_URL must be empty when adminConfigured delivery is selected.' }
+            if ($configuration.AdminTeamsTeamId) { Assert-AzdRiskCaGuidList @($configuration.AdminTeamsTeamId) 'AZD_CA_ADMIN_TEAMS_TEAM_ID' }
+        }
     }
     if ($configuration.NotificationMode -eq 'logAnalytics') {
         if ($configuration.LogAnalyticsWorkspaceResourceId -notmatch '^/subscriptions/[0-9a-fA-F-]{36}/resourceGroups/[^/]+/providers/Microsoft\.OperationalInsights/workspaces/[^/]+$') { throw 'AZD_CA_LOG_ANALYTICS_WORKSPACE_RESOURCE_ID must be an existing Log Analytics workspace resource ID.' }

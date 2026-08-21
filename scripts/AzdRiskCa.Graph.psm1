@@ -267,6 +267,8 @@ function New-AzdRiskCaPlan {
         AdoptExisting=$Configuration.AdoptExisting
         GraphAuthenticationMethod=$Configuration.GraphAuthenticationMethod
         NotificationMode=$Configuration.NotificationMode
+        AdminTeamsDeliveryMode=$Configuration.AdminTeamsDeliveryMode
+        HasAdminTeamsTarget=(-not [string]::IsNullOrWhiteSpace($Configuration.AdminTeamsTeamId) -and -not [string]::IsNullOrWhiteSpace($Configuration.AdminTeamsChannelId))
         HasAdminTeamsWorkflowUrl=(-not [string]::IsNullOrWhiteSpace($Configuration.AdminTeamsWorkflowUrl))
         HasUserTeamsWorkflowUrl=(-not [string]::IsNullOrWhiteSpace($Configuration.UserTeamsWorkflowUrl))
         LogAnalyticsWorkspaceResourceId=$Configuration.LogAnalyticsWorkspaceResourceId
@@ -278,46 +280,80 @@ function New-AzdRiskCaPlan {
 function Invoke-AzdRiskCaApply {
     [CmdletBinding(SupportsShouldProcess)] param([Parameter(Mandatory)][object]$Plan, [AllowNull()][object]$ExistingState, [scriptblock]$Checkpoint)
     $state = [ordered]@{ schemaVersion='1.0'; tenantId=$Plan.tenantId; updatedAt=[DateTimeOffset]::UtcNow.ToString('o'); authenticationStrength=$null; policies=[ordered]@{} }
+    $rollbackActions = [System.Collections.Generic.List[object]]::new()
     $priorStrength=Get-AzdRiskCaProperty $ExistingState 'authenticationStrength'
     if($priorStrength){$state.authenticationStrength=$priorStrength}
     $priorPolicies=Get-AzdRiskCaProperty $ExistingState 'policies'
     if($priorPolicies){foreach($property in @($priorPolicies.PSObject.Properties)){$state.policies[$property.Name]=$property.Value}}
-    $strength = $Plan.authenticationStrength
-    $strengthId = $strength.id
-    if ($strength.action -eq 'create' -and $PSCmdlet.ShouldProcess($strength.body.displayName,'create authentication strength')) {
-        $created = Invoke-AzdRiskCaGraphRequest POST "$script:GraphBase/policies/authenticationStrengthPolicies" $strength.body; $strengthId=[string]$created.id
-    } elseif ($strength.action -eq 'update' -and $PSCmdlet.ShouldProcess($strength.body.displayName,'update authentication strength')) {
-        Invoke-AzdRiskCaGraphRequest PATCH "$script:GraphBase/policies/authenticationStrengthPolicies/$strengthId" @{ displayName=$strength.body.displayName; description=$strength.body.description } | Out-Null
-        Invoke-AzdRiskCaGraphRequest POST "$script:GraphBase/policies/authenticationStrengthPolicies/$strengthId/updateAllowedCombinations" @{ allowedCombinations=@($strength.body.allowedCombinations) } | Out-Null
-    }
-    if ($Plan.configuration.UseTapAuthenticationStrength) {
-        $existingStrengthRecord=Get-AzdRiskCaProperty $ExistingState 'authenticationStrength'
-        if ($existingStrengthRecord -and $existingStrengthRecord.id -eq $strengthId) {
-            $state.authenticationStrength=[ordered]@{ id=$strengthId; created=[bool]$existingStrengthRecord.created; adopted=[bool]$existingStrengthRecord.adopted; previous=$existingStrengthRecord.previous }
-        } else {
-            $previousStrength = if ($strength.adopted) { Select-AzdRiskCaDesiredShape $strength.body $strength.existing } else { $null }
-            $state.authenticationStrength=[ordered]@{ id=$strengthId; created=($strength.action -eq 'create'); adopted=[bool]$strength.adopted; previous=$previousStrength }
+    try {
+        $strength = $Plan.authenticationStrength
+        $strengthId = $strength.id
+        if ($strength.action -eq 'create' -and $PSCmdlet.ShouldProcess($strength.body.displayName,'create authentication strength')) {
+            $created = Invoke-AzdRiskCaGraphRequest POST "$script:GraphBase/policies/authenticationStrengthPolicies" $strength.body; $strengthId=[string]$created.id
+            $rollbackActions.Add([pscustomobject]@{ kind='deleteStrength'; id=$strengthId; name=$strength.body.displayName })
+        } elseif ($strength.action -eq 'update' -and $PSCmdlet.ShouldProcess($strength.body.displayName,'update authentication strength')) {
+            $rollbackActions.Add([pscustomobject]@{ kind='restoreStrength'; id=$strengthId; name=$strength.body.displayName; previous=$strength.existing })
+            Invoke-AzdRiskCaGraphRequest PATCH "$script:GraphBase/policies/authenticationStrengthPolicies/$strengthId" @{ displayName=$strength.body.displayName; description=$strength.body.description } | Out-Null
+            Invoke-AzdRiskCaGraphRequest POST "$script:GraphBase/policies/authenticationStrengthPolicies/$strengthId/updateAllowedCombinations" @{ allowedCombinations=@($strength.body.allowedCombinations) } | Out-Null
         }
-    }
-    if($Checkpoint){& $Checkpoint ([pscustomobject]$state)}
-    foreach ($policy in @($Plan.policies)) {
-        $body = $policy.body | ConvertTo-Json -Depth 100 | ConvertFrom-Json -Depth 100
-        $bodyStrength=Get-AzdRiskCaProperty $body.grantControls 'authenticationStrength'
-        if ($bodyStrength -and $bodyStrength.id -eq '__CREATED_TAP_STRENGTH__') { $bodyStrength.id=$strengthId }
-        $policyId=$policy.id
-        $policyUri=Get-AzdRiskCaPolicyUri $body $policyId
-        if ($policy.action -eq 'create' -and $PSCmdlet.ShouldProcess($policy.displayName,'create Conditional Access policy')) { $created=Invoke-AzdRiskCaGraphRequest POST (Get-AzdRiskCaPolicyUri $body $null) $body; $policyId=[string]$created.id }
-        elseif ($policy.action -eq 'update' -and $PSCmdlet.ShouldProcess($policy.displayName,'update Conditional Access policy')) { Invoke-AzdRiskCaGraphRequest PATCH $policyUri $body | Out-Null }
-        if (-not $policyId) { throw "Graph did not return an object ID for '$($policy.displayName)'." }
-        $existingPoliciesState=Get-AzdRiskCaProperty $ExistingState 'policies'
-        $existingRecord=Get-AzdRiskCaProperty $existingPoliciesState $policy.displayName
-        if ($existingRecord -and $existingRecord.id -eq $policyId) {
-            $state.policies[$policy.displayName]=[ordered]@{ id=$policyId; created=[bool]$existingRecord.created; adopted=[bool]$existingRecord.adopted; previous=$existingRecord.previous }
-        } else {
-            $previous = if ($policy.adopted) { ConvertTo-AzdRiskCaComparable $policy.existing } else { $null }
-            $state.policies[$policy.displayName]=[ordered]@{ id=$policyId; created=($policy.action -eq 'create'); adopted=[bool]$policy.adopted; previous=$previous }
+        if ($Plan.configuration.UseTapAuthenticationStrength) {
+            $existingStrengthRecord=Get-AzdRiskCaProperty $ExistingState 'authenticationStrength'
+            if ($existingStrengthRecord -and $existingStrengthRecord.id -eq $strengthId) {
+                $state.authenticationStrength=[ordered]@{ id=$strengthId; created=[bool]$existingStrengthRecord.created; adopted=[bool]$existingStrengthRecord.adopted; previous=$existingStrengthRecord.previous }
+            } else {
+                $previousStrength = if ($strength.adopted) { Select-AzdRiskCaDesiredShape $strength.body $strength.existing } else { $null }
+                $state.authenticationStrength=[ordered]@{ id=$strengthId; created=($strength.action -eq 'create'); adopted=[bool]$strength.adopted; previous=$previousStrength }
+            }
         }
         if($Checkpoint){& $Checkpoint ([pscustomobject]$state)}
+        foreach ($policy in @($Plan.policies)) {
+            $body = $policy.body | ConvertTo-Json -Depth 100 | ConvertFrom-Json -Depth 100
+            $bodyStrength=Get-AzdRiskCaProperty $body.grantControls 'authenticationStrength'
+            if ($bodyStrength -and $bodyStrength.id -eq '__CREATED_TAP_STRENGTH__') { $bodyStrength.id=$strengthId }
+            $policyId=$policy.id
+            $policyUri=Get-AzdRiskCaPolicyUri $body $policyId
+            if ($policy.action -eq 'create' -and $PSCmdlet.ShouldProcess($policy.displayName,'create Conditional Access policy')) {
+                $created=Invoke-AzdRiskCaGraphRequest POST (Get-AzdRiskCaPolicyUri $body $null) $body; $policyId=[string]$created.id
+                $rollbackActions.Add([pscustomobject]@{ kind='deletePolicy'; id=$policyId; name=$policy.displayName; body=$body })
+            } elseif ($policy.action -eq 'update' -and $PSCmdlet.ShouldProcess($policy.displayName,'update Conditional Access policy')) {
+                $rollbackActions.Add([pscustomobject]@{ kind='restorePolicy'; id=$policyId; name=$policy.displayName; previous=(ConvertTo-AzdRiskCaComparable $policy.existing) })
+                Invoke-AzdRiskCaGraphRequest PATCH $policyUri $body | Out-Null
+            }
+            if (-not $policyId) { throw "Graph did not return an object ID for '$($policy.displayName)'." }
+            $existingPoliciesState=Get-AzdRiskCaProperty $ExistingState 'policies'
+            $existingRecord=Get-AzdRiskCaProperty $existingPoliciesState $policy.displayName
+            if ($existingRecord -and $existingRecord.id -eq $policyId) {
+                $state.policies[$policy.displayName]=[ordered]@{ id=$policyId; created=[bool]$existingRecord.created; adopted=[bool]$existingRecord.adopted; previous=$existingRecord.previous }
+            } else {
+                $previous = if ($policy.adopted) { ConvertTo-AzdRiskCaComparable $policy.existing } else { $null }
+                $state.policies[$policy.displayName]=[ordered]@{ id=$policyId; created=($policy.action -eq 'create'); adopted=[bool]$policy.adopted; previous=$previous }
+            }
+            if($Checkpoint){& $Checkpoint ([pscustomobject]$state)}
+        }
+    } catch {
+        $applyError=$_
+        $rollbackErrors=[System.Collections.Generic.List[string]]::new()
+        $actions=@($rollbackActions)
+        [array]::Reverse($actions)
+        foreach($action in $actions){
+            try {
+                switch($action.kind){
+                    'deletePolicy' { Invoke-AzdRiskCaGraphRequest DELETE (Get-AzdRiskCaPolicyUri $action.body $action.id) | Out-Null }
+                    'restorePolicy' { Invoke-AzdRiskCaGraphRequest PATCH (Get-AzdRiskCaPolicyUri $action.previous $action.id) $action.previous | Out-Null }
+                    'deleteStrength' { Invoke-AzdRiskCaGraphRequest DELETE "$script:GraphBase/policies/authenticationStrengthPolicies/$($action.id)" | Out-Null }
+                    'restoreStrength' {
+                        Invoke-AzdRiskCaGraphRequest PATCH "$script:GraphBase/policies/authenticationStrengthPolicies/$($action.id)" @{ displayName=$action.previous.displayName; description=$action.previous.description } | Out-Null
+                        Invoke-AzdRiskCaGraphRequest POST "$script:GraphBase/policies/authenticationStrengthPolicies/$($action.id)/updateAllowedCombinations" @{ allowedCombinations=@($action.previous.allowedCombinations) } | Out-Null
+                    }
+                }
+            } catch { $rollbackErrors.Add("$($action.kind) '$($action.name)': $($_.Exception.Message)") }
+        }
+        if($rollbackErrors.Count -gt 0){
+            $rollbackException=[System.InvalidOperationException]::new("Conditional Access apply failed: $($applyError.Exception.Message). Automatic rollback was incomplete: $($rollbackErrors -join '; ')",$applyError.Exception)
+            $rollbackException.Data['AzdRiskCaRollbackIncomplete']=$true
+            throw $rollbackException
+        }
+        throw $applyError
     }
     return [pscustomobject]$state
 }
@@ -344,6 +380,20 @@ function Remove-AzdRiskCaManagedObjects {
         if ($record.created -and $PSCmdlet.ShouldProcess($recordProperty.Name,'delete solution-created Conditional Access policy')) { Invoke-AzdRiskCaGraphRequest DELETE $policyUri | Out-Null }
         elseif ($record.adopted -and $record.previous -and $PSCmdlet.ShouldProcess($recordProperty.Name,'restore adopted Conditional Access policy')) { Invoke-AzdRiskCaGraphRequest PATCH $policyUri $record.previous | Out-Null }
     }
+    $policyFailures=@()
+    for($attempt=1;$attempt -le 10;$attempt++){
+        $policies=@(Get-AzdRiskCaGraphCollection "$script:GraphBetaBase/identity/conditionalAccess/policies")
+        $policyFailures=@()
+        foreach($recordProperty in @($State.policies.PSObject.Properties)){
+            $record=$recordProperty.Value
+            $actual=@($policies | Where-Object id -eq $record.id) | Select-Object -First 1
+            if($record.created -and $actual){$policyFailures += "$($recordProperty.Name): created policy still exists"}
+            elseif($record.adopted -and $record.previous -and (-not $actual -or -not (Test-AzdRiskCaEquivalent $record.previous $actual))){$policyFailures += "$($recordProperty.Name): adopted policy is not restored"}
+        }
+        if($policyFailures.Count -eq 0){break}
+        if($attempt -lt 10){Start-Sleep -Seconds 2}
+    }
+    if($policyFailures.Count){throw "Conditional Access cleanup did not converge: $($policyFailures -join '; '). Ownership state was preserved."}
     if ($State.authenticationStrength -and $State.authenticationStrength.created) {
         $policies=@(Get-AzdRiskCaGraphCollection "$script:GraphBetaBase/identity/conditionalAccess/policies")
         $references=@($policies | Where-Object { $grant=Get-AzdRiskCaProperty $_ 'grantControls'; $reference=Get-AzdRiskCaProperty $grant 'authenticationStrength'; $reference -and $reference.id -eq $State.authenticationStrength.id })
@@ -353,6 +403,23 @@ function Remove-AzdRiskCaManagedObjects {
         $prior=$State.authenticationStrength.previous
         Invoke-AzdRiskCaGraphRequest PATCH "$script:GraphBase/policies/authenticationStrengthPolicies/$($State.authenticationStrength.id)" @{ displayName=$prior.displayName; description=$prior.description } | Out-Null
         Invoke-AzdRiskCaGraphRequest POST "$script:GraphBase/policies/authenticationStrengthPolicies/$($State.authenticationStrength.id)/updateAllowedCombinations" @{ allowedCombinations=@($prior.allowedCombinations) } | Out-Null
+    }
+    if($State.authenticationStrength){
+        $strengthFailures=@()
+        for($attempt=1;$attempt -le 10;$attempt++){
+            $strengths=@(Get-AzdRiskCaGraphCollection "$script:GraphBase/policies/authenticationStrengthPolicies")
+            $actual=@($strengths | Where-Object id -eq $State.authenticationStrength.id) | Select-Object -First 1
+            $strengthFailures=@()
+            if($State.authenticationStrength.created -and $actual){$strengthFailures += 'solution-created TAP authentication strength still exists'}
+            elseif($State.authenticationStrength.adopted -and $State.authenticationStrength.previous){
+                $prior=$State.authenticationStrength.previous
+                $same=($actual -and [string]$actual.displayName -ceq [string]$prior.displayName -and [string]$actual.description -ceq [string]$prior.description -and (@($actual.allowedCombinations | Sort-Object) -join ',') -ceq (@($prior.allowedCombinations | Sort-Object) -join ','))
+                if(-not $same){$strengthFailures += 'adopted TAP authentication strength is not restored'}
+            }
+            if($strengthFailures.Count -eq 0){break}
+            if($attempt -lt 10){Start-Sleep -Seconds 2}
+        }
+        if($strengthFailures.Count){throw "Authentication-strength cleanup did not converge: $($strengthFailures -join '; '). Ownership state was preserved."}
     }
 }
 

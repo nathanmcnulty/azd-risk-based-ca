@@ -9,9 +9,30 @@ Import-Module Microsoft.Graph.Authentication -MinimumVersion 2.30.0 -Force
 $configuration=Get-AzdRiskCaConfiguration
 $tenantId=(az account show --query tenantId -o tsv).Trim()
 Connect-AzdRiskCaGraph ([guid]$tenantId) $configuration | Out-Null
+
+if ($configuration.NotificationMode -ne 'none' -and $configuration.AdminTeamsDeliveryMode -eq 'adminConfigured') {
+    if (-not $env:AZD_CA_TEAMS_CONNECTION_RESOURCE_ID -or -not $env:AZD_CA_TEAMS_WORKFLOW_RESOURCE_ID) { throw 'Teams delivery infrastructure outputs are missing.' }
+    if (-not (Complete-AzdRiskCaTeamsConnectionAuthorization $env:AZD_CA_TEAMS_CONNECTION_RESOURCE_ID ([guid]$tenantId))) { throw 'Teams connection authorization was skipped; the delivery workflow remains disabled.' }
+    Enable-AzdRiskCaTeamsWorkflow $env:AZD_CA_TEAMS_WORKFLOW_RESOURCE_ID
+    $testDelivery=ConvertTo-AzdRiskCaBoolean $env:AZD_CA_TEST_TEAMS_DELIVERY $false 'AZD_CA_TEST_TEAMS_DELIVERY'
+    if ($testDelivery -or $env:AZD_CA_TEAMS_AUTHORIZED -ne 'true') {
+        Test-AzdRiskCaTeamsWorkflowDelivery $env:AZD_CA_TEAMS_WORKFLOW_RESOURCE_ID
+        Set-AzdEnvironmentValue AZD_CA_TEAMS_AUTHORIZED 'true'
+    }
+}
+
 $existingState=Get-AzdRiskCaState
 $plan=New-AzdRiskCaPlan $configuration $existingState
-$state=Invoke-AzdRiskCaApply $plan $existingState -Checkpoint { param($checkpointState) Save-AzdRiskCaState $checkpointState } -Confirm:$false
+try {
+    $state=Invoke-AzdRiskCaApply $plan $existingState -Checkpoint { param($checkpointState) Save-AzdRiskCaState $checkpointState } -Confirm:$false
+} catch {
+    $statePath=Get-AzdRiskCaDataPath 'azd-risk-ca-state.json'
+    if(-not $_.Exception.Data['AzdRiskCaRollbackIncomplete']){
+        if($existingState){ Save-AzdRiskCaState $existingState }
+        elseif(Test-Path -LiteralPath $statePath){ Remove-Item -LiteralPath $statePath -Force }
+    }
+    throw
+}
 Save-AzdRiskCaState $state
 
 if ($configuration.NotificationMode -eq 'graph') {

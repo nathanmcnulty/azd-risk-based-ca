@@ -3,6 +3,7 @@ Set-StrictMode -Version Latest
 Import-Module (Join-Path $PSScriptRoot 'AzdRiskCa.Common.psm1') -Force
 Import-AzdEnvironment
 $configuration=Get-AzdRiskCaConfiguration
+if ($env:AZD_CA_TEAMS_AUTHORIZED -eq 'true') { Set-AzdEnvironmentValue AZD_CA_TEAMS_AUTHORIZED 'false' }
 if (-not $configuration.Cleanup) { Write-Host 'Preserving Conditional Access policies and authentication strengths. Set AZD_CA_CLEANUP=true for explicit cleanup.'; return }
 Import-Module (Join-Path $PSScriptRoot 'AzdRiskCa.Authentication.psm1') -Force
 Import-Module (Join-Path $PSScriptRoot 'AzdRiskCa.Graph.psm1') -Force

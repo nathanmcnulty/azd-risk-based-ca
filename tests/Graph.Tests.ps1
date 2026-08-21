@@ -106,6 +106,7 @@ Describe 'Cleanup guard' {
         $previous=[pscustomobject]@{displayName='Adopted';state='disabled';conditions=[pscustomobject]@{users=[pscustomobject]@{includeUsers=@('All')}};grantControls=[pscustomobject]@{operator='OR';builtInControls=@('mfa')}}
         $state=[pscustomobject]@{policies=[pscustomobject]@{Adopted=[pscustomobject]@{id='policy-id';created=$false;adopted=$true;previous=$previous}};authenticationStrength=$null}
         Mock Invoke-AzdRiskCaGraphRequest -ModuleName AzdRiskCa.Graph {}
+        Mock Get-AzdRiskCaGraphCollection -ModuleName AzdRiskCa.Graph { @([pscustomobject]@{id='policy-id';displayName='Adopted';state='disabled';conditions=[pscustomobject]@{users=[pscustomobject]@{includeUsers=@('All')}};grantControls=[pscustomobject]@{operator='OR';builtInControls=@('mfa')}}) }
         Remove-AzdRiskCaManagedObjects $state -Confirm:$false
         Assert-MockCalled Invoke-AzdRiskCaGraphRequest -ModuleName AzdRiskCa.Graph -Times 1 -ParameterFilter {$Method -eq 'PATCH' -and $Uri -like '*/policy-id' -and $Body.state -eq 'disabled'}
     }
@@ -142,6 +143,51 @@ Describe 'Fail-closed application' {
         $next=Invoke-AzdRiskCaApply $plan $existing -Confirm:$false
         $next.policies[$policy.displayName].created | Should -BeTrue
     }
+    It 'restores earlier policy updates when a later update fails' {
+        $first=$script:bodies[0] | ConvertTo-Json -Depth 50 | ConvertFrom-Json -Depth 50
+        $second=$script:bodies[1] | ConvertTo-Json -Depth 50 | ConvertFrom-Json -Depth 50
+        $first.state='enabled'; $second.state='enabled'
+        $firstExisting=$first | ConvertTo-Json -Depth 50 | ConvertFrom-Json -Depth 50
+        $secondExisting=$second | ConvertTo-Json -Depth 50 | ConvertFrom-Json -Depth 50
+        $firstExisting.state='enabledForReportingButNotEnforced'; $secondExisting.state='enabledForReportingButNotEnforced'
+        $firstExisting | Add-Member id 'first-id'; $secondExisting | Add-Member id 'second-id'
+        $plan=[pscustomobject]@{
+            tenantId='tenant'
+            configuration=[pscustomobject]@{UseTapAuthenticationStrength=$false}
+            authenticationStrength=[pscustomobject]@{id=$script:strength;action='none'}
+            policies=@(
+                [pscustomobject]@{displayName=$first.displayName;id='first-id';action='update';body=$first;existing=$firstExisting;adopted=$false},
+                [pscustomobject]@{displayName=$second.displayName;id='second-id';action='update';body=$second;existing=$secondExisting;adopted=$false}
+            )
+        }
+        $script:calls=[System.Collections.Generic.List[string]]::new()
+        $script:enabledWrites=0
+        Mock Invoke-AzdRiskCaGraphRequest -ModuleName AzdRiskCa.Graph {
+            if($Method -eq 'PATCH'){
+                $script:calls.Add("$Uri|$($Body.state)")
+                if($Body.state -eq 'enabled'){
+                    $script:enabledWrites++
+                    if($script:enabledWrites -eq 2){ throw 'simulated token failure' }
+                }
+            }
+        }
+        { Invoke-AzdRiskCaApply $plan $null -Confirm:$false } | Should -Throw '*simulated token failure*'
+        @($script:calls)[-2] | Should -BeLike '*second-id|enabledForReportingButNotEnforced'
+        @($script:calls)[-1] | Should -BeLike '*first-id|enabledForReportingButNotEnforced'
+    }
+    It 'marks an incomplete automatic rollback so checkpoint state is retained' {
+        $policy=$script:bodies[0] | ConvertTo-Json -Depth 50 | ConvertFrom-Json -Depth 50
+        $policy.state='enabled'
+        $existing=$policy | ConvertTo-Json -Depth 50 | ConvertFrom-Json -Depth 50
+        $existing.state='enabledForReportingButNotEnforced'
+        $existing | Add-Member id 'policy-id'
+        $plan=[pscustomobject]@{tenantId='tenant';configuration=[pscustomobject]@{UseTapAuthenticationStrength=$false};authenticationStrength=[pscustomobject]@{id=$script:strength;action='none'};policies=@([pscustomobject]@{displayName=$policy.displayName;id='policy-id';action='update';body=$policy;existing=$existing;adopted=$false})}
+        Mock Invoke-AzdRiskCaGraphRequest -ModuleName AzdRiskCa.Graph { throw 'simulated persistent token failure' }
+        $caught=$null
+        try { Invoke-AzdRiskCaApply $plan $null -Confirm:$false | Out-Null } catch { $caught=$_ }
+        $caught.Exception.Message | Should -BeLike '*Automatic rollback was incomplete*'
+        $caught.Exception.Data['AzdRiskCaRollbackIncomplete'] | Should -BeTrue
+    }
 }
 
 Describe 'Plan report redaction' {
@@ -152,7 +198,7 @@ Describe 'Plan report redaction' {
         Mock Get-AzdRiskCaCurrentOperator -ModuleName AzdRiskCa.Graph { [pscustomobject]@{id='operator-id';displayName='Operator';userPrincipalName='operator@example.test'} }
         Mock Resolve-AzdRiskCaAuthenticationStrength -ModuleName AzdRiskCa.Graph { [pscustomobject]@{id=$script:strength;action='none';created=$false;adopted=$false;existing=$null;body=$null} }
         Mock Get-AzdRiskCaGraphCollection -ModuleName AzdRiskCa.Graph { @() }
-        $configuration=[pscustomobject]@{PolicyState='reportOnly';EmergencyAccessGroupId='';AdminCoverageGroupId='';AdditionalExcludeGroupIds=@();UseTapAuthenticationStrength=$false;AdoptExisting=$false;GraphAuthenticationMethod='browser';NotificationMode='graph';AdminTeamsWorkflowUrl='https://secret.example/admin';UserTeamsWorkflowUrl='https://secret.example/user';LogAnalyticsWorkspaceResourceId='';LogAnalyticsWorkspaceLocation=''}
+        $configuration=[pscustomobject]@{PolicyState='reportOnly';EmergencyAccessGroupId='';AdminCoverageGroupId='';AdditionalExcludeGroupIds=@();UseTapAuthenticationStrength=$false;AdoptExisting=$false;GraphAuthenticationMethod='browser';NotificationMode='graph';AdminTeamsDeliveryMode='workflowWebhook';AdminTeamsWorkflowUrl='https://secret.example/admin';UserTeamsWorkflowUrl='https://secret.example/user';AdminTeamsTeamId='';AdminTeamsChannelId='';LogAnalyticsWorkspaceResourceId='';LogAnalyticsWorkspaceLocation=''}
         $json=New-AzdRiskCaPlan $configuration $null | ConvertTo-Json -Depth 100
         $json | Should -Not -Match 'secret\.example'
         $json | Should -Match 'HasAdminTeamsWorkflowUrl'

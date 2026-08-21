@@ -19,18 +19,35 @@ Describe 'Standard cached Graph authentication' {
             $ContextScope -eq 'CurrentUser' -and
             $null -eq $UseDeviceAuthentication
         }
+    }
+    It 'fails clearly when standard WAM authentication cannot initialize in the host' {
+        Mock Connect-MgGraph -ModuleName AzdRiskCa.Authentication { throw 'InteractiveBrowserCredential authentication failed: A window handle must be configured.' }
+        $configuration=[pscustomobject]@{NotificationMode='none'}
+        { Connect-AzdRiskCaGraph ([guid]'11111111-1111-1111-1111-111111111111') $configuration } | Should -Throw '*interactive terminal*Device-code authentication is not supported*'
+    }
+    It 'explains how to complete administrator consent when Entra requires it' {
+        Mock Connect-MgGraph -ModuleName AzdRiskCa.Authentication { throw 'AADSTS65001: The user or administrator has not consented.' }
+        $configuration=[pscustomobject]@{NotificationMode='none'}
+        { Connect-AzdRiskCaGraph ([guid]'11111111-1111-1111-1111-111111111111') $configuration } | Should -Throw '*administrator consent*standard WAM/browser consent prompt*'
+    }
+    It 'uses Get-MgContext as the connection and scope validation source' {
+        $scopes=Get-AzdRiskCaGraphPermissionScope none
+        Mock Connect-MgGraph -ModuleName AzdRiskCa.Authentication {}
+        Mock Invoke-MgGraphRequest -ModuleName AzdRiskCa.Authentication {}
+        Mock Get-MgContext -ModuleName AzdRiskCa.Authentication { [pscustomobject]@{TenantId='11111111-1111-1111-1111-111111111111';Scopes=$scopes} }
+        $configuration=[pscustomobject]@{NotificationMode='none'}
+        Connect-AzdRiskCaGraph ([guid]'11111111-1111-1111-1111-111111111111') $configuration | Out-Null
+        Assert-MockCalled Get-MgContext -ModuleName AzdRiskCa.Authentication -Times 1
         Assert-MockCalled Invoke-MgGraphRequest -ModuleName AzdRiskCa.Authentication -Times 1 -ParameterFilter {
             $Method -eq 'GET' -and $Uri -eq 'https://graph.microsoft.com/v1.0/me?$select=id'
         }
     }
-    It 'fails clearly when standard WAM authentication cannot initialize in the host' {
+    It 'fails before planning when cached context metadata has no usable token' {
         $scopes=Get-AzdRiskCaGraphPermissionScope none
         Mock Connect-MgGraph -ModuleName AzdRiskCa.Authentication {}
-        Mock Get-MgContext -ModuleName AzdRiskCa.Authentication {
-            [pscustomobject]@{TenantId='11111111-1111-1111-1111-111111111111';Scopes=$scopes}
-        }
-        Mock Invoke-MgGraphRequest -ModuleName AzdRiskCa.Authentication { throw 'InteractiveBrowserCredential authentication failed: A window handle must be configured.' }
+        Mock Get-MgContext -ModuleName AzdRiskCa.Authentication { [pscustomobject]@{TenantId='11111111-1111-1111-1111-111111111111';Scopes=$scopes} }
+        Mock Invoke-MgGraphRequest -ModuleName AzdRiskCa.Authentication { throw 'InteractiveBrowserCredential authentication failed: User canceled authentication.' }
         $configuration=[pscustomobject]@{NotificationMode='none'}
-        { Connect-AzdRiskCaGraph ([guid]'11111111-1111-1111-1111-111111111111') $configuration } | Should -Throw '*interactive terminal*Device-code authentication is not supported*'
+        { Connect-AzdRiskCaGraph ([guid]'11111111-1111-1111-1111-111111111111') $configuration } | Should -Throw '*usable Microsoft Graph token*Device-code authentication is not supported*'
     }
 }
