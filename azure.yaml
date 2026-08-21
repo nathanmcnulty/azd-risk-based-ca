@@ -1,6 +1,6 @@
 name: azd-risk-based-ca
 metadata:
-  template: azd-risk-based-ca@0.1.0
+  template: azd-risk-based-ca@1.0.0
 infra:
   provider: bicep
   path: infra

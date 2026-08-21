@@ -1,8 +1,11 @@
 # azd-risk-based-ca
 
+[![Validation](https://github.com/nathanmcnulty/azd-risk-based-ca/actions/workflows/validate.yml/badge.svg)](https://github.com/nathanmcnulty/azd-risk-based-ca/actions/workflows/validate.yml)
+[![License: Unlicense](https://img.shields.io/badge/license-Unlicense-blue.svg)](LICENSE)
+
 An idempotent Azure Developer CLI solution for nine Microsoft Entra Conditional Access risk policies, optional Teams notifications, and a supported operator-guided migration from legacy Identity Protection policies.
 
-The five baseline payloads are normalized from `Entra/conditional-access/risk-policies`: response metadata, object IDs, and tenant-specific OData links are not used in requests. Built-in directory role template IDs are discovered from the target tenant on every plan instead of retaining the source export's role snapshot.
+The five baseline payloads are normalized from [nathanmcnulty/Entra conditional-access risk policies](https://github.com/nathanmcnulty/Entra/tree/main/conditional-access/risk-policies): response metadata, object IDs, and tenant-specific OData links are not used in requests. Built-in directory role template IDs are discovered from the target tenant on every plan instead of retaining the source export's role snapshot.
 
 ## Safety model
 
@@ -36,10 +39,10 @@ Device registration uses Microsoft's built-in phishing-resistant strength by def
 Requirements: PowerShell 7.4+, Azure CLI, Azure Developer CLI 1.23+, Node.js 22 for Graph notification packaging, and `Microsoft.Graph.Authentication` 2.30+. The tenant needs Entra ID P2 or Entra Suite licensing. The signed-in operator must be allowed to consent to and use the requested delegated Graph permissions.
 
 ```powershell
+azd init --template nathanmcnulty/azd-risk-based-ca
 Install-PSResource Microsoft.Graph.Authentication -Scope CurrentUser
 azd auth login
 az login
-azd init
 
 azd env set AZD_CA_EMERGENCY_ACCESS_GROUP_ID '<group-object-id>'
 azd env set AZD_CA_ADMIN_COVERAGE_GROUP_ID '<optional-admin-coverage-group-id>'
