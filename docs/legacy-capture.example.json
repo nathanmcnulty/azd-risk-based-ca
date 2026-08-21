@@ -1,0 +1,27 @@
+{
+  "tenantId": "00000000-0000-0000-0000-000000000000",
+  "userRisk": {
+    "enabled": false,
+    "policy": {
+      "conditions": {
+        "users": { "includeUsers": ["All"], "excludeUsers": [], "includeGroups": [], "excludeGroups": [], "includeRoles": [], "excludeRoles": [] },
+        "userRiskLevels": ["high"],
+        "clientAppTypes": ["all"],
+        "applications": { "includeApplications": ["All"], "excludeApplications": [], "includeUserActions": [] }
+      },
+      "grantControls": { "operator": "AND", "builtInControls": ["mfa", "passwordChange"] }
+    }
+  },
+  "signInRisk": {
+    "enabled": false,
+    "policy": {
+      "conditions": {
+        "users": { "includeUsers": ["All"], "excludeUsers": [], "includeGroups": [], "excludeGroups": [], "includeRoles": [], "excludeRoles": [] },
+        "signInRiskLevels": ["medium", "high"],
+        "clientAppTypes": ["all"],
+        "applications": { "includeApplications": ["All"], "excludeApplications": [], "includeUserActions": [] }
+      },
+      "grantControls": { "operator": "OR", "builtInControls": ["mfa"] }
+    }
+  }
+}

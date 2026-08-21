@@ -1,0 +1,45 @@
+{
+  "$schema": "https://raw.githubusercontent.com/nathanmcnulty/azd-gui/main/schemas/azd-gui.schema.json",
+  "schemaVersion": "1.0",
+  "minimumAzdVersion": "1.23.0",
+  "requiresInteractiveTerminal": true,
+  "prerequisites": [
+    { "id": "azd", "name": "Azure Developer CLI", "kind": "tool", "minimumVersion": "1.23.0", "required": true, "installProvider": "manual" },
+    { "id": "az-cli", "name": "Azure CLI", "kind": "tool", "minimumVersion": "2.60.0", "required": true, "installProvider": "azdTool", "installId": "az-cli" },
+    { "id": "pwsh", "name": "PowerShell", "kind": "tool", "minimumVersion": "7.4.0", "required": true, "installProvider": "manual" },
+    { "id": "microsoft-graph-authentication", "name": "Microsoft Graph PowerShell authentication", "kind": "powershellModule", "minimumVersion": "2.30.0", "required": true, "installProvider": "psResource", "installId": "Microsoft.Graph.Authentication" }
+  ],
+  "connections": [
+    { "id": "azd", "name": "Azure Developer CLI", "required": true, "reason": "Manage environment values and optional Azure notification resources." },
+    { "id": "azureCli", "name": "Azure CLI", "required": true, "scopes": ["https://management.azure.com/.default"], "reason": "Resolve the selected subscription and tenant." },
+    { "id": "graphPowerShell", "name": "Microsoft Graph PowerShell", "required": true, "scopes": ["Policy.Read.All", "Policy.ReadWrite.ConditionalAccess", "Group.Read.All", "RoleManagement.Read.Directory", "User.Read", "Application.Read.All", "AppRoleAssignment.ReadWrite.All"], "reason": "Plan and reconcile Conditional Access; User.Read resolves the signed-in operator only when no emergency group is supplied, and the last two scopes are selected only for Graph notifications." }
+  ],
+  "configuration": {
+    "groups": [
+      {
+        "id": "policies",
+        "title": "Conditional Access safety",
+        "fields": [
+          { "id": "state", "environmentVariable": "AZD_CA_POLICY_STATE", "label": "Policy state", "type": "select", "required": true, "default": "reportOnly", "options": [{ "label": "Report-only", "value": "reportOnly" }, { "label": "Enabled (tenant confirmation required)", "value": "enabled" }] },
+          { "id": "emergency", "environmentVariable": "AZD_CA_EMERGENCY_ACCESS_GROUP_ID", "label": "Emergency-access group object ID", "type": "entraObject", "help": "Strongly recommended. If omitted, the signed-in operator is excluded from every policy as a single-user failsafe." },
+          { "id": "adminCoverage", "environmentVariable": "AZD_CA_ADMIN_COVERAGE_GROUP_ID", "label": "Admin coverage group object ID", "type": "entraObject", "help": "Covers custom and administrative-unit-scoped admins not reached by built-in role targeting." },
+          { "id": "additionalExclusions", "environmentVariable": "AZD_CA_ADDITIONAL_EXCLUDE_GROUP_IDS", "label": "Additional exclusion group IDs", "type": "text", "placeholder": "GUID;GUID" },
+          { "id": "tap", "environmentVariable": "AZD_CA_USE_TAP_AUTH_STRENGTH", "label": "Use TAP-only authentication strength", "type": "boolean", "default": false },
+          { "id": "adopt", "environmentVariable": "AZD_CA_ADOPT_EXISTING", "label": "Adopt reviewed same-name objects", "type": "boolean", "default": false },
+          { "id": "graphAuth", "environmentVariable": "AZD_CA_GRAPH_AUTHENTICATION_METHOD", "label": "Graph sign-in", "type": "select", "required": true, "default": "browser", "options": [{ "label": "Cached WAM or browser", "value": "browser" }] }
+        ]
+      },
+      {
+        "id": "notifications",
+        "title": "Optional Teams notifications",
+        "fields": [
+          { "id": "mode", "environmentVariable": "AZD_CA_NOTIFICATION_MODE", "label": "Backend", "type": "select", "required": true, "default": "none", "options": [{ "label": "Disabled", "value": "none" }, { "label": "Graph polling", "value": "graph" }, { "label": "Existing Log Analytics", "value": "logAnalytics" }] },
+          { "id": "adminUrl", "environmentVariable": "AZD_CA_ADMIN_TEAMS_WORKFLOW_URL", "label": "Admin Teams Workflow callback", "type": "secret", "sensitive": true, "condition": { "field": "mode", "notEquals": "none" } },
+          { "id": "userUrl", "environmentVariable": "AZD_CA_USER_TEAMS_WORKFLOW_URL", "label": "Optional user Teams Workflow callback", "type": "secret", "sensitive": true, "condition": { "field": "mode", "notEquals": "none" } },
+          { "id": "workspace", "environmentVariable": "AZD_CA_LOG_ANALYTICS_WORKSPACE_RESOURCE_ID", "label": "Existing workspace resource ID", "type": "text", "condition": { "field": "mode", "equals": "logAnalytics" } },
+          { "id": "workspaceLocation", "environmentVariable": "AZD_CA_LOG_ANALYTICS_WORKSPACE_LOCATION", "label": "Workspace location", "type": "location", "condition": { "field": "mode", "equals": "logAnalytics" } }
+        ]
+      }
+    ]
+  }
+}

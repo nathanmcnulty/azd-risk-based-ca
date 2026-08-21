@@ -1,0 +1,35 @@
+{
+  "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "adminUrl": { "type": "SecureString" },
+    "userUrl": { "type": "SecureString" },
+    "checkpointBase": { "type": "String" },
+    "deadLetterBase": { "type": "String" }
+  },
+  "triggers": {
+    "manual": { "type": "Request", "kind": "Http", "inputs": { "schema": { "type": "object" } } }
+  },
+  "actions": {
+    "Envelope": { "type": "Compose", "inputs": "@json(triggerBody()?['data']?['alertContext']?['condition']?['allOf']?[0]?['dimensions']?[0]?['value'])", "runAfter": {} },
+    "Check_seed_marker": { "type": "Http", "inputs": { "method": "HEAD", "uri": "@{parameters('checkpointBase')}/seeded.json", "authentication": { "type": "ManagedServiceIdentity", "audience": "https://storage.azure.com/" }, "headers": { "x-ms-version": "2023-11-03" } }, "runAfter": { "Envelope": ["Succeeded"] } },
+    "Seed_without_delivery": { "type": "Http", "inputs": { "method": "PUT", "uri": "@{parameters('checkpointBase')}/seeded.json", "authentication": { "type": "ManagedServiceIdentity", "audience": "https://storage.azure.com/" }, "headers": { "x-ms-version": "2023-11-03", "x-ms-blob-type": "BlockBlob", "If-None-Match": "*", "Content-Type": "application/json" }, "body": { "schemaVersion": "1.0", "seededAt": "@utcNow()", "historicalEventsDelivered": false } }, "runAfter": { "Check_seed_marker": ["Failed"] } },
+    "Check_admin_checkpoint": { "type": "Http", "inputs": { "method": "HEAD", "uri": "@{parameters('checkpointBase')}/@{outputs('Envelope')?['eventId']}-admin.json", "authentication": { "type": "ManagedServiceIdentity", "audience": "https://storage.azure.com/" }, "headers": { "x-ms-version": "2023-11-03" } }, "runAfter": { "Check_seed_marker": ["Succeeded"] } },
+    "Send_admin": { "type": "Http", "inputs": { "method": "POST", "uri": "@parameters('adminUrl')", "headers": { "Content-Type": "application/json" }, "body": { "type": "message", "attachments": [{ "contentType": "application/vnd.microsoft.card.adaptive", "contentUrl": null, "content": { "$schema": "http://adaptivecards.io/schemas/adaptive-card.json", "type": "AdaptiveCard", "version": "1.4", "body": [{ "type": "TextBlock", "text": "Microsoft Entra risk detected", "weight": "Bolder" }, { "type": "FactSet", "facts": [{ "title": "User", "value": "@{outputs('Envelope')?['userPrincipalName']}" }, { "title": "Risk", "value": "@{outputs('Envelope')?['riskLevel']} @{outputs('Envelope')?['riskType']}" }, { "title": "Event", "value": "@{outputs('Envelope')?['eventId']}" }] }] } }] }, "retryPolicy": { "type": "exponential", "count": 4, "interval": "PT10S" } }, "runAfter": { "Check_admin_checkpoint": ["Failed"] } },
+    "Record_admin_delivery": { "type": "Http", "inputs": { "method": "PUT", "uri": "@{parameters('checkpointBase')}/@{outputs('Envelope')?['eventId']}-admin.json", "authentication": { "type": "ManagedServiceIdentity", "audience": "https://storage.azure.com/" }, "headers": { "x-ms-version": "2023-11-03", "x-ms-blob-type": "BlockBlob", "If-None-Match": "*", "Content-Type": "application/json" }, "body": { "schemaVersion": "1.0", "destination": "admin", "deliveredAt": "@utcNow()", "eventId": "@outputs('Envelope')?['eventId']" } }, "runAfter": { "Send_admin": ["Succeeded"] } },
+    "Dead_letter_admin": { "type": "Http", "inputs": { "method": "PUT", "uri": "@{parameters('deadLetterBase')}/@{outputs('Envelope')?['eventId']}-admin.json", "authentication": { "type": "ManagedServiceIdentity", "audience": "https://storage.azure.com/" }, "headers": { "x-ms-version": "2023-11-03", "x-ms-blob-type": "BlockBlob", "Content-Type": "application/json" }, "body": { "schemaVersion": "1.0", "destination": "admin", "failedAt": "@utcNow()", "event": "@outputs('Envelope')" } }, "runAfter": { "Send_admin": ["Failed", "TimedOut"] } },
+    "Send_minimized_user_card": {
+      "type": "If",
+      "expression": "@and(not(empty(parameters('userUrl'))),not(empty(outputs('Envelope')?['userPrincipalName'])),not(contains(toLower(outputs('Envelope')?['userPrincipalName']),'#ext#')))",
+      "actions": {
+        "Check_user_checkpoint": { "type": "Http", "inputs": { "method": "HEAD", "uri": "@{parameters('checkpointBase')}/@{outputs('Envelope')?['eventId']}-user.json", "authentication": { "type": "ManagedServiceIdentity", "audience": "https://storage.azure.com/" }, "headers": { "x-ms-version": "2023-11-03" } }, "runAfter": {} },
+        "Send_user": { "type": "Http", "inputs": { "method": "POST", "uri": "@parameters('userUrl')", "headers": { "Content-Type": "application/json" }, "body": { "schemaVersion": "1.0", "recipientUpn": "@outputs('Envelope')?['userPrincipalName']", "card": { "type": "message", "attachments": [{ "contentType": "application/vnd.microsoft.card.adaptive", "contentUrl": null, "content": { "$schema": "http://adaptivecards.io/schemas/adaptive-card.json", "type": "AdaptiveCard", "version": "1.4", "body": [{ "type": "TextBlock", "text": "Review your Microsoft account security", "weight": "Bolder" }, { "type": "TextBlock", "text": "Microsoft detected account activity that may require your attention. Open My Sign-Ins to review and secure your account.", "wrap": true }, { "type": "TextBlock", "text": "https://mysignins.microsoft.com/security-info", "wrap": true }] } }] } }, "retryPolicy": { "type": "exponential", "count": 4, "interval": "PT10S" } }, "runAfter": { "Check_user_checkpoint": ["Failed"] } },
+        "Record_user_delivery": { "type": "Http", "inputs": { "method": "PUT", "uri": "@{parameters('checkpointBase')}/@{outputs('Envelope')?['eventId']}-user.json", "authentication": { "type": "ManagedServiceIdentity", "audience": "https://storage.azure.com/" }, "headers": { "x-ms-version": "2023-11-03", "x-ms-blob-type": "BlockBlob", "If-None-Match": "*", "Content-Type": "application/json" }, "body": { "schemaVersion": "1.0", "destination": "user", "deliveredAt": "@utcNow()", "eventId": "@outputs('Envelope')?['eventId']" } }, "runAfter": { "Send_user": ["Succeeded"] } },
+        "Dead_letter_user": { "type": "Http", "inputs": { "method": "PUT", "uri": "@{parameters('deadLetterBase')}/@{outputs('Envelope')?['eventId']}-user.json", "authentication": { "type": "ManagedServiceIdentity", "audience": "https://storage.azure.com/" }, "headers": { "x-ms-version": "2023-11-03", "x-ms-blob-type": "BlockBlob", "Content-Type": "application/json" }, "body": { "schemaVersion": "1.0", "destination": "user", "failedAt": "@utcNow()", "eventId": "@outputs('Envelope')?['eventId']" } }, "runAfter": { "Send_user": ["Failed", "TimedOut"] } }
+      },
+      "else": { "actions": {} },
+      "runAfter": { "Check_seed_marker": ["Succeeded"] }
+    }
+  },
+  "outputs": {}
+}

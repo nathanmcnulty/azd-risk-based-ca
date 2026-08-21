@@ -1,0 +1,24 @@
+name: azd-risk-based-ca
+metadata:
+  template: azd-risk-based-ca@0.1.0
+infra:
+  provider: bicep
+  path: infra
+hooks:
+  preprovision:
+    shell: pwsh
+    run: ./scripts/Pre-Provision.ps1
+    interactive: true
+    continueOnError: false
+  postprovision:
+    shell: pwsh
+    run: ./scripts/Post-Provision.ps1
+    interactive: true
+    continueOnError: false
+  predown:
+    shell: pwsh
+    run: ./scripts/Pre-Down.ps1
+    interactive: false
+    continueOnError: false
+requiredVersions:
+  azd: ">= 1.23.0"

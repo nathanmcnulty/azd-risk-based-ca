@@ -1,0 +1,7 @@
+.azure/*
+!.azure/.gitignore
+reports/*.json
+src/risk-notification-poller/node_modules/
+src/risk-notification-poller/dist/
+*.bicepparam
+testResults.xml

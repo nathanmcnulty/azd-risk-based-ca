@@ -1,0 +1,16 @@
+{
+  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+  "type": "AdaptiveCard",
+  "version": "1.4",
+  "body": [
+    { "type": "TextBlock", "text": "Microsoft Entra risk detected", "weight": "Bolder", "size": "Medium" },
+    { "type": "FactSet", "facts": [
+      { "title": "User", "value": "${userPrincipalName}" },
+      { "title": "Detected", "value": "${detectedAt}" },
+      { "title": "Risk", "value": "${riskLevel} ${riskType}" },
+      { "title": "State", "value": "${riskState}" },
+      { "title": "Event", "value": "${eventId}" }
+    ] }
+  ],
+  "actions": [{ "type": "Action.OpenUrl", "title": "Investigate", "url": "${investigationUrl}" }]
+}

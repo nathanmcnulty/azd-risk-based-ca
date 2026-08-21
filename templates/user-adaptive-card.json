@@ -1,0 +1,10 @@
+{
+  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+  "type": "AdaptiveCard",
+  "version": "1.4",
+  "body": [
+    { "type": "TextBlock", "text": "Review your Microsoft account security", "weight": "Bolder" },
+    { "type": "TextBlock", "text": "Microsoft detected account activity that may require your attention. Open My Sign-Ins to review and secure your account.", "wrap": true }
+  ],
+  "actions": [{ "type": "Action.OpenUrl", "title": "Review security info", "url": "https://mysignins.microsoft.com/security-info" }]
+}
