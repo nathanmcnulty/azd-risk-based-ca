@@ -16,7 +16,7 @@ Describe 'Administrator documentation and deployment packaging' {
     It 'links every focused administrator guide' {
         foreach ($path in @(
             'docs/policies-and-safety.md', 'docs/identity-and-permissions.md',
-            'docs/configuration.md', 'docs/notifications.md',
+            'docs/configuration.md', 'docs/historical-impact.md', 'docs/notifications.md',
             'docs/legacy-migration.md', 'docs/operations-and-cleanup.md',
             'docs/development.md', 'docs/agent-assisted-deployment.md')) {
             (Test-Path (Join-Path $script:root $path)) | Should -BeTrue

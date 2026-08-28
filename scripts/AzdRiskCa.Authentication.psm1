@@ -2,7 +2,10 @@ Set-StrictMode -Version Latest
 
 function Get-AzdRiskCaGraphPermissionScope {
     [CmdletBinding()] param([ValidateSet('none','graph','logAnalytics')][string]$NotificationMode = 'none')
-    $scopes = @('Policy.Read.All','Policy.ReadWrite.ConditionalAccess','Group.Read.All','RoleManagement.Read.Directory','User.Read')
+    $scopes = @(
+        'AuditLog.Read.All','Group.Read.All','IdentityRiskyUser.Read.All','Policy.Read.All',
+        'Policy.ReadWrite.ConditionalAccess','RoleManagement.Read.Directory','User.Read'
+    )
     if ($NotificationMode -eq 'graph') { $scopes += @('Application.Read.All','AppRoleAssignment.ReadWrite.All') }
     return @($scopes | Sort-Object -Unique)
 }

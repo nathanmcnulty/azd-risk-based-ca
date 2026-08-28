@@ -4,6 +4,7 @@ Import-Module (Join-Path $PSScriptRoot 'AzdRiskCa.Common.psm1') -Force
 Import-Module (Join-Path $PSScriptRoot 'AzdRiskCa.Wizard.psm1') -Force
 Import-Module (Join-Path $PSScriptRoot 'AzdRiskCa.Authentication.psm1') -Force
 Import-Module (Join-Path $PSScriptRoot 'AzdRiskCa.Graph.psm1') -Force
+Import-Module (Join-Path $PSScriptRoot 'AzdRiskCa.Impact.psm1') -Force
 
 Import-AzdEnvironment
 Invoke-AzdRiskCaFirstRunWizard | Out-Null
@@ -50,6 +51,18 @@ Connect-AzdRiskCaGraph ([guid]$tenantId) $configuration | Out-Null
 $plan=New-AzdRiskCaPlan $configuration (Get-AzdRiskCaState)
 $reportPath=Join-Path (Split-Path -Parent $PSScriptRoot) 'reports/azd-risk-ca-plan.json'
 Save-AzdRiskCaJson $plan $reportPath
+$impactReportPath=Join-Path (Split-Path -Parent $PSScriptRoot) 'reports/azd-risk-ca-historical-impact.json'
+try {
+    $impact=Get-AzdRiskCaHistoricalImpact $plan
+    Save-AzdRiskCaJson $impact $impactReportPath
+    Write-Host $impact.estimate.summary
+    Write-Host "Historical impact report: $impactReportPath"
+} catch {
+    Write-Warning "Historical impact analysis was unavailable and did not block the Conditional Access plan. $($_.Exception.Message)"
+}
+$identityProtectionLinks=Get-AzdRiskCaIdentityProtectionLinks
+Write-Host "Risky users report: $($identityProtectionLinks.riskyUsers)"
+Write-Host "Risky sign-ins report: $($identityProtectionLinks.riskySignIns)"
 
 Write-Host "Conditional Access plan for tenant ${tenantId}: $(@($plan.policies | Where-Object action -eq 'create').Count) create, $(@($plan.policies | Where-Object action -eq 'update').Count) update, $(@($plan.policies | Where-Object action -eq 'none').Count) unchanged."
 foreach ($warning in $plan.warnings) { Write-Warning $warning }
