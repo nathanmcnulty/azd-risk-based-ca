@@ -1,10 +1,12 @@
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 Import-Module (Join-Path $PSScriptRoot 'AzdRiskCa.Common.psm1') -Force
+Import-Module (Join-Path $PSScriptRoot 'AzdRiskCa.Wizard.psm1') -Force
 Import-Module (Join-Path $PSScriptRoot 'AzdRiskCa.Authentication.psm1') -Force
 Import-Module (Join-Path $PSScriptRoot 'AzdRiskCa.Graph.psm1') -Force
 
 Import-AzdEnvironment
+Invoke-AzdRiskCaFirstRunWizard | Out-Null
 $defaults = [ordered]@{
     AZD_CA_POLICY_STATE='reportOnly'; AZD_CA_EMERGENCY_ACCESS_GROUP_ID=''; AZD_CA_ADMIN_COVERAGE_GROUP_ID=''
     AZD_CA_ADDITIONAL_EXCLUDE_GROUP_IDS=''; AZD_CA_USE_TAP_AUTH_STRENGTH='false'; AZD_CA_ADOPT_EXISTING='false'

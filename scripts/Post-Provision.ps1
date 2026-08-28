@@ -21,6 +21,14 @@ if ($configuration.NotificationMode -ne 'none' -and $configuration.AdminTeamsDel
     }
 }
 
+# Complete optional notification deployment before changing Conditional Access.
+# A packaging or remote-build failure must not leave policy changes behind.
+if ($configuration.NotificationMode -eq 'graph') {
+    if ([string]::IsNullOrWhiteSpace($env:AZD_CA_GRAPH_FUNCTION_PRINCIPAL_ID) -or [string]::IsNullOrWhiteSpace($env:AZD_CA_GRAPH_FUNCTION_NAME)) { throw 'Graph notification infrastructure outputs are missing.' }
+    Publish-AzdRiskCaGraphFunction $env:AZD_CA_GRAPH_FUNCTION_NAME
+    Grant-AzdRiskCaIdentityRiskPermission $env:AZD_CA_GRAPH_FUNCTION_PRINCIPAL_ID
+}
+
 $existingState=Get-AzdRiskCaState
 $plan=New-AzdRiskCaPlan $configuration $existingState
 try {
@@ -34,12 +42,6 @@ try {
     throw
 }
 Save-AzdRiskCaState $state
-
-if ($configuration.NotificationMode -eq 'graph') {
-    if ([string]::IsNullOrWhiteSpace($env:AZD_CA_GRAPH_FUNCTION_PRINCIPAL_ID) -or [string]::IsNullOrWhiteSpace($env:AZD_CA_GRAPH_FUNCTION_NAME)) { throw 'Graph notification infrastructure outputs are missing.' }
-    Grant-AzdRiskCaIdentityRiskPermission $env:AZD_CA_GRAPH_FUNCTION_PRINCIPAL_ID
-    Publish-AzdRiskCaGraphFunction $env:AZD_CA_GRAPH_FUNCTION_NAME
-}
 
 $validationPlan=New-AzdRiskCaPlan $configuration $state
 $validation=Test-AzdRiskCaAppliedState $validationPlan $state

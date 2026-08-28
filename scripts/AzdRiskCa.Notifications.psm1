@@ -13,14 +13,15 @@ function Grant-AzdRiskCaIdentityRiskPermission {
 
 function Publish-AzdRiskCaGraphFunction {
     [CmdletBinding()] param([Parameter(Mandatory)][string]$FunctionName)
-    if (-not (Get-Command npm -ErrorAction SilentlyContinue)) { throw 'npm is required to package the Graph notification Function.' }
     $source=Join-Path (Split-Path -Parent $PSScriptRoot) 'src/risk-notification-poller'
-    npm install --omit=dev --ignore-scripts --no-audit --no-fund --prefix $source | Out-Null
-    if ($LASTEXITCODE -ne 0) { throw 'npm install failed for the notification Function.' }
     $archive=Join-Path ([System.IO.Path]::GetTempPath()) "azd-risk-ca-$([guid]::NewGuid().ToString('N')).zip"
     try {
-        Compress-Archive -Path (Join-Path $source '*') -DestinationPath $archive -Force
-        az functionapp deployment source config-zip --name $FunctionName --resource-group $env:AZURE_RESOURCE_GROUP --src $archive --only-show-errors | Out-Null
+        # Keep the source package reproducible and let Azure Functions Flex build
+        # package-lock.json dependencies remotely. Administrators do not need Node.
+        $packageItems=@(Get-ChildItem -LiteralPath $source -Force | Where-Object Name -notin @('node_modules','dist'))
+        if (-not $packageItems) { throw 'The Graph notification Function source package is empty.' }
+        Compress-Archive -Path $packageItems.FullName -DestinationPath $archive -Force
+        az functionapp deployment source config-zip --name $FunctionName --resource-group $env:AZURE_RESOURCE_GROUP --src $archive --build-remote true --only-show-errors | Out-Null
         if ($LASTEXITCODE -ne 0) { throw 'Function zip deployment failed.' }
     } finally { if (Test-Path -LiteralPath $archive) { Remove-Item -LiteralPath $archive -Force } }
 }
