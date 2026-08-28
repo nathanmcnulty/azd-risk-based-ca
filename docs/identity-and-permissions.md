@@ -6,9 +6,9 @@ The operator needs Azure CLI access to the target subscription and permission to
 
 ## Microsoft Graph access
 
-The baseline delegated scopes are `Policy.Read.All`, `Policy.ReadWrite.ConditionalAccess`, `Group.Read.All`, `RoleManagement.Read.Directory`, and `User.Read`. Notification mode `graph` additionally requests `Application.Read.All` and `AppRoleAssignment.ReadWrite.All` to grant the Function identity `IdentityRiskEvent.Read.All`. Optional scopes are not requested for other modes.
+The baseline delegated scopes are `Policy.Read.All`, `Policy.ReadWrite.ConditionalAccess`, `Group.Read.All`, `RoleManagement.Read.Directory`, `User.Read`, `AuditLog.Read.All`, and `IdentityRiskyUser.Read.All`. The last two count historical sign-in risk events and current actionable risky users for the risk-exposure summary; the deployment does not enumerate identities for that report. Notification mode `graph` additionally requests `Application.Read.All` and `AppRoleAssignment.ReadWrite.All` to grant the Function identity `IdentityRiskEvent.Read.All`. Notification-only scopes are not requested for other modes.
 
-Conditional Access policy and authentication-strength writes support Conditional Access Administrator or Security Administrator as the least-privileged built-in roles. Graph notification mode also assigns a Microsoft Graph application role to the Function service principal; the operator therefore needs a role supported for app-role assignments, such as Privileged Role Administrator, Application Administrator, or Cloud Application Administrator.
+Conditional Access policy and authentication-strength writes support Conditional Access Administrator or Security Administrator as the least-privileged built-in roles. Security Administrator can also read the sign-in and risky-user APIs used by the exposure summary. A Conditional Access Administrator needs an additional supported read role: Reports Reader for sign-ins and Security Reader for risky users. Graph notification mode also assigns a Microsoft Graph application role to the Function service principal; the operator therefore needs a role supported for app-role assignments, such as Privileged Role Administrator, Application Administrator, or Cloud Application Administrator.
 
 The hooks reuse a valid cached Graph context when its tenant, account, cloud, and scopes match. Otherwise Microsoft Graph PowerShell uses the normal operating-system broker or browser flow. A read-only `/me` probe confirms that the current process has a usable token before planning.
 
@@ -25,3 +25,6 @@ Runtime notification resources use managed identity where applicable. Callback U
 - [Create a Conditional Access policy](https://learn.microsoft.com/graph/api/conditionalaccessroot-post-policies)
 - [Create an authentication strength policy](https://learn.microsoft.com/graph/api/authenticationstrengthroot-post-policies)
 - [Grant an app role to a service principal](https://learn.microsoft.com/graph/api/serviceprincipal-post-approleassignments)
+- [Combine Graph requests with JSON batching](https://learn.microsoft.com/graph/json-batching)
+- [List sign-ins](https://learn.microsoft.com/graph/api/signin-list)
+- [List risky users](https://learn.microsoft.com/graph/api/riskyuser-list)

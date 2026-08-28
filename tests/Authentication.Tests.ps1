@@ -1,6 +1,8 @@
 BeforeAll { Import-Module (Join-Path $PSScriptRoot '../scripts/AzdRiskCa.Authentication.psm1') -Force }
 Describe 'Least-privilege delegated scopes' {
-    It 'uses the five base permissions including operator fallback resolution' { (Get-AzdRiskCaGraphPermissionScope none) | Should -Be @('Group.Read.All','Policy.Read.All','Policy.ReadWrite.ConditionalAccess','RoleManagement.Read.Directory','User.Read') }
+    It 'includes the read scopes required for historical impact and operator fallback resolution' {
+        (Get-AzdRiskCaGraphPermissionScope none) | Should -Be @('AuditLog.Read.All','Group.Read.All','IdentityRiskyUser.Read.All','Policy.Read.All','Policy.ReadWrite.ConditionalAccess','RoleManagement.Read.Directory','User.Read')
+    }
     It 'requests app assignment permissions only for Graph polling' { Get-AzdRiskCaGraphPermissionScope graph | Should -Contain 'AppRoleAssignment.ReadWrite.All'; Get-AzdRiskCaGraphPermissionScope none | Should -Not -Contain 'AppRoleAssignment.ReadWrite.All'; Get-AzdRiskCaGraphPermissionScope logAnalytics | Should -Not -Contain 'Application.Read.All' }
 }
 
