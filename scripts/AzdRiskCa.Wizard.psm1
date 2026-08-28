@@ -4,6 +4,13 @@ function Test-AzdRiskCaInteractiveSession {
     return -not ($env:CI -or $env:AZD_NON_INTERACTIVE -eq 'true' -or [Console]::IsInputRedirected)
 }
 
+function Set-AzdRiskCaWizardEnvironmentValue {
+    param([Parameter(Mandatory)][string]$Name, [Parameter(Mandatory)][AllowEmptyString()][string]$Value)
+    azd env set $Name $Value | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw "Unable to save '$Name' to the azd environment." }
+    Set-Item -Path "env:$Name" -Value $Value
+}
+
 function Read-AzdRiskCaRequiredChoice {
     param([string]$Prompt, [string]$Default, [string[]]$Allowed)
     while ($true) {
@@ -86,9 +93,7 @@ function Invoke-AzdRiskCaFirstRunWizard {
     )
     if (-not $resuming -and @($configuredNames | Where-Object { -not [string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($_)) }).Count -gt 0) { return $false }
 
-    azd env set AZD_CA_SETUP_COMPLETE inProgress | Out-Null
-    if ($LASTEXITCODE -ne 0) { throw 'Unable to save the first-run setup state.' }
-    Set-Item env:AZD_CA_SETUP_COMPLETE inProgress
+    Set-AzdRiskCaWizardEnvironmentValue AZD_CA_SETUP_COMPLETE inProgress
 
     Write-Host ''
     Write-Host 'azd-risk-based-ca first-run setup' -ForegroundColor Cyan
@@ -135,10 +140,8 @@ function Invoke-AzdRiskCaFirstRunWizard {
     }
     $confirm = Read-Host 'Save these choices to the azd environment? (yes/no)'
     if ($confirm.Trim() -notin @('yes','y')) { throw 'First-run setup was cancelled. Run azd up again to restart the wizard.' }
-    foreach ($entry in $values.GetEnumerator()) { azd env set $entry.Key $entry.Value | Out-Null; if ($LASTEXITCODE -ne 0) { throw "Unable to save '$($entry.Key)' to the azd environment." }; Set-Item -Path "env:$($entry.Key)" -Value $entry.Value }
-    azd env set AZD_CA_SETUP_COMPLETE true | Out-Null
-    if ($LASTEXITCODE -ne 0) { throw 'Unable to save the first-run completion marker.' }
-    Set-Item env:AZD_CA_SETUP_COMPLETE true
+    foreach ($entry in $values.GetEnumerator()) { Set-AzdRiskCaWizardEnvironmentValue $entry.Key $entry.Value }
+    Set-AzdRiskCaWizardEnvironmentValue AZD_CA_SETUP_COMPLETE true
     Write-Host 'Setup saved. Continuing with read-only preflight and the report-only deployment plan.' -ForegroundColor Green
     return $true
 }

@@ -30,7 +30,10 @@ Describe 'First-run administrator wizard' {
         $script:answers = [System.Collections.Generic.Queue[string]]::new()
         foreach ($answer in @('', '', '', 'no', 'none', 'yes')) { $script:answers.Enqueue($answer) }
         Mock Read-Host { $script:answers.Dequeue() } -ModuleName AzdRiskCa.Wizard
-        Mock azd { $global:LASTEXITCODE = 0 } -ModuleName AzdRiskCa.Wizard
+        Mock Set-AzdRiskCaWizardEnvironmentValue {
+            param($Name, $Value)
+            Set-Item -Path "env:$Name" -Value $Value
+        } -ModuleName AzdRiskCa.Wizard
         Mock Test-AzdRiskCaInteractiveSession { return $true } -ModuleName AzdRiskCa.Wizard
 
         Invoke-AzdRiskCaFirstRunWizard | Should -BeTrue
@@ -38,7 +41,7 @@ Describe 'First-run administrator wizard' {
         $env:AZD_CA_NOTIFICATION_MODE | Should -Be 'none'
         $env:AZD_CA_USE_TAP_AUTH_STRENGTH | Should -Be 'false'
         $env:AZD_CA_SETUP_COMPLETE | Should -Be 'true'
-        Should -Invoke azd -Times 14 -ModuleName AzdRiskCa.Wizard
+        Should -Invoke Set-AzdRiskCaWizardEnvironmentValue -Times 14 -ModuleName AzdRiskCa.Wizard
     }
 
     It 'skips prompts when an operator preconfigured a meaningful value' {
