@@ -7,6 +7,42 @@ BeforeAll {
     $script:config=[pscustomobject]@{PolicyState='reportOnly';AdminCoverageGroupId=$script:coverage}
     $script:bodies=@(Get-AzdRiskCaPolicyBodies $script:config @($script:role) @($script:emergency) $script:strength)
 }
+
+Describe 'Applied-state validation consistency' {
+    BeforeEach {
+        $body=[pscustomobject]@{
+            displayName='Retry policy'
+            state='enabledForReportingButNotEnforced'
+            conditions=[pscustomobject]@{}
+            grantControls=[pscustomobject]@{}
+        }
+        $script:validationPlan=[pscustomobject]@{policies=@([pscustomobject]@{displayName=$body.displayName;body=$body})}
+        $script:validationState=[pscustomobject]@{policies=[pscustomobject]@{'Retry policy'=[pscustomobject]@{id='retry-id'}};authenticationStrength=$null}
+        Mock Start-Sleep -ModuleName AzdRiskCa.Graph {}
+    }
+
+    It 'retries transient policy read failures and then validates the policy' {
+        $script:readAttempts=0
+        Mock Invoke-AzdRiskCaGraphRequest -ModuleName AzdRiskCa.Graph {
+            $script:readAttempts++
+            if($script:readAttempts -lt 3){throw 'not replicated'}
+            [pscustomobject]@{displayName='Retry policy';state='enabledForReportingButNotEnforced';conditions=[pscustomobject]@{};grantControls=[pscustomobject]@{}}
+        }
+        $result=Test-AzdRiskCaAppliedState $script:validationPlan $script:validationState
+        $result.valid | Should -BeTrue
+        Assert-MockCalled Invoke-AzdRiskCaGraphRequest -ModuleName AzdRiskCa.Graph -Times 3
+        Assert-MockCalled Start-Sleep -ModuleName AzdRiskCa.Graph -Times 2
+    }
+
+    It 'fails after bounded retries when a policy never becomes readable' {
+        Mock Invoke-AzdRiskCaGraphRequest -ModuleName AzdRiskCa.Graph { throw 'still unavailable' }
+        $result=Test-AzdRiskCaAppliedState $script:validationPlan $script:validationState
+        $result.valid | Should -BeFalse
+        $result.failures | Should -Contain 'Retry policy: could not re-read'
+        Assert-MockCalled Invoke-AzdRiskCaGraphRequest -ModuleName AzdRiskCa.Graph -Times 6
+        Assert-MockCalled Start-Sleep -ModuleName AzdRiskCa.Graph -Times 5
+    }
+}
 Describe 'Canonical recommended policy payloads' {
     It 'builds exactly the nine approved names' { @($script:bodies).Count | Should -Be 9; @($script:bodies.displayName) | Should -Be @('Admin-SignInRisk-High-Block','Admin-SignInRisk-LowMedium-RequireMFA','Admin-UserRisk-MediumHigh-Block','User-SignInRisk-MediumHigh-RequireMFA','User-UserRisk-High-RiskRemediation','User-UserRisk-Any-Block-SecurityInfoRegistration','User-SignInRisk-Any-Block-SecurityInfoRegistration','User-UserRisk-Any-RequireStrongAuth-DeviceRegistration','User-SignInRisk-Any-RequireStrongAuth-DeviceRegistration') }
     It 'defaults every policy to Graph report-only state' { @($script:bodies | Where-Object state -ne 'enabledForReportingButNotEnforced').Count | Should -Be 0 }
