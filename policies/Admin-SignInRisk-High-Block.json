@@ -1,0 +1,8 @@
+{
+  "displayName": "Admin-SignInRisk-High-Block",
+  "scope": "admin",
+  "riskType": "signIn",
+  "riskLevels": ["high"],
+  "control": "block",
+  "target": "applications"
+}

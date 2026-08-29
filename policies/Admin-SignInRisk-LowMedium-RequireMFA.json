@@ -1,0 +1,8 @@
+{
+  "displayName": "Admin-SignInRisk-LowMedium-RequireMFA",
+  "scope": "admin",
+  "riskType": "signIn",
+  "riskLevels": ["low", "medium"],
+  "control": "mfa",
+  "target": "applications"
+}

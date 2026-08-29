@@ -1,0 +1,8 @@
+{
+  "displayName": "Admin-UserRisk-MediumHigh-Block",
+  "scope": "admin",
+  "riskType": "user",
+  "riskLevels": ["medium", "high"],
+  "control": "block",
+  "target": "applications"
+}

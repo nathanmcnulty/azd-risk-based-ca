@@ -1,8 +1,6 @@
 # Policies and safety
 
-The template manages nine Conditional Access policies. It normalizes requests before sending them to Microsoft Graph and discovers built-in directory role template IDs in the target tenant.
-
-The same nine normalized policy bodies are published as standalone JSON and a one-shot archive in [nathanmcnulty/nathanmcnulty](https://github.com/nathanmcnulty/nathanmcnulty/tree/main/Entra/conditional-access/risk-policies). This azd template adds tenant-aware role discovery, exclusions, ownership, validation, notifications, and migration safeguards around those policies.
+The template manages nine Conditional Access policies. Their checked-in JSON definitions live in [`policies/`](../policies/), and the deployment reads those files directly. It then materializes tenant-specific Graph request bodies by discovering built-in directory role template IDs and applying the configured groups, exclusions, state, and authentication strength. No policy definition is downloaded from another repository.
 
 ## Policy catalog
 

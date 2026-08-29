@@ -1,0 +1,14 @@
+{
+  "schemaVersion": "1.0",
+  "policies": [
+    "Admin-SignInRisk-High-Block.json",
+    "Admin-SignInRisk-LowMedium-RequireMFA.json",
+    "Admin-UserRisk-MediumHigh-Block.json",
+    "User-SignInRisk-MediumHigh-RequireMFA.json",
+    "User-UserRisk-High-RiskRemediation.json",
+    "User-UserRisk-Any-Block-SecurityInfoRegistration.json",
+    "User-SignInRisk-Any-Block-SecurityInfoRegistration.json",
+    "User-UserRisk-Any-RequireStrongAuth-DeviceRegistration.json",
+    "User-SignInRisk-Any-RequireStrongAuth-DeviceRegistration.json"
+  ]
+}

@@ -1,0 +1,8 @@
+{
+  "displayName": "User-SignInRisk-MediumHigh-RequireMFA",
+  "scope": "all",
+  "riskType": "signIn",
+  "riskLevels": ["medium", "high"],
+  "control": "mfa",
+  "target": "applications"
+}
