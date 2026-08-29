@@ -8,7 +8,7 @@ Deploy a safe, report-only-first baseline of nine Microsoft Entra Conditional Ac
 This template helps an administrator:
 
 - establish a report-only baseline for nine risk policies;
-- review tenant-specific impact before enabling enforcement;
+- estimate 30-day tenant-specific impact before enabling enforcement;
 - deliver optional administrator and user notifications; and
 - migrate from legacy Identity Protection risk policies with rollback coverage.
 
@@ -29,7 +29,7 @@ Install:
 Install-PSResource Microsoft.Graph.Authentication -Scope CurrentUser
 ```
 
-Use a Conditional Access Administrator or Security Administrator who can deploy to the selected subscription and consent to the Microsoft Graph permissions requested by the chosen features. Notification modes also create Azure role assignments and therefore need permission to assign roles. Review [identity and permissions](docs/identity-and-permissions.md) before production use. Entra ID P2 or Entra Suite licensing is required for risk-based Conditional Access.
+Use a Security Administrator, or a Conditional Access Administrator with the read roles documented in [identity and permissions](docs/identity-and-permissions.md), who can deploy to the selected subscription and consent to the Microsoft Graph permissions requested by the chosen features. Notification modes also create Azure role assignments and therefore need permission to assign roles. Entra ID P2 or Entra Suite licensing is required for risk-based Conditional Access.
 
 ### Deploy
 
@@ -39,7 +39,7 @@ azd init -t nathanmcnulty/azd-risk-based-ca && azd up
 
 The first run uses report-only policy state, walks through the required tenant and exclusion settings, shows the plan before changes, and uses the normal Azure and Microsoft Graph browser sign-in. Rerun `azd up` to continue or reconcile an existing environment. Device-code authentication is not supported.
 
-After deployment, review the plan and applied report, inspect sign-in logs and Conditional Access What If results, and verify the emergency access path. Follow [operations and cleanup](docs/operations-and-cleanup.md) for verification and teardown.
+Before deployment changes are applied, the hook writes a fast risk-exposure summary with 30-day risky sign-in event counts and a current actionable risky-user snapshot. The counts are tenant-wide upper bounds rather than a replay of policy targeting. After deployment, review that summary, the linked Identity Protection reports, the plan and applied report, Conditional Access What If results, and the emergency access path. Follow [operations and cleanup](docs/operations-and-cleanup.md) for verification and teardown.
 
 ## What this deploys
 
@@ -47,6 +47,7 @@ After deployment, review the plan and applied report, inspect sign-in logs and C
 - Optional Teams delivery through a tenant-local managed connection or an existing Teams Workflow webhook.
 - Optional Graph risk-detection polling through an Azure Functions Flex Consumption app, or Log Analytics scheduled alerting when the workspace already receives the required risk tables.
 - Local deployment reports and ownership-aware state for reconciliation and cleanup.
+- A read-only, batched risk-exposure summary based on 30-day sign-in risk and current risky-user counts.
 
 The default is report-only policy state and no notification backend. See [configuration](docs/configuration.md) to choose notification and enforcement settings.
 
@@ -55,6 +56,7 @@ The default is report-only policy state and no notification backend. See [config
 | Guide | Purpose |
 | --- | --- |
 | [Policies and safety](docs/policies-and-safety.md) | Policy behavior, report-only defaults, exclusions, adoption, and enablement gates |
+| [Historical impact](docs/historical-impact.md) | Batched Graph risk counts, Identity Protection links, policy mapping, and limitations |
 | [Identity and permissions](docs/identity-and-permissions.md) | Azure roles, Graph consent, authentication, and emergency access expectations |
 | [Configuration](docs/configuration.md) | Environment values, notification choices, and common deployment examples |
 | [Notifications](docs/notifications.md) | Graph polling, Log Analytics, Teams delivery, consent, and testing |

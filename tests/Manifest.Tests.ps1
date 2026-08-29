@@ -15,6 +15,9 @@ Describe 'Azure Deployment Studio manifest' {
         $connection=$script:manifest.connections | Where-Object id -eq 'graphPowerShell'
         $connection.scopes | Should -Contain 'Policy.ReadWrite.ConditionalAccess'
         $connection.scopes | Should -Contain 'RoleManagement.Read.Directory'
+        $connection.scopes | Should -Contain 'AuditLog.Read.All'
+        $connection.scopes | Should -Contain 'IdentityRiskyUser.Read.All'
+        $connection.scopes | Should -Not -Contain 'User.Read.All'
         $connection.scopes | Should -Not -Contain 'Application.Read.All'
         $connection.scopes | Should -Not -Contain 'AppRoleAssignment.ReadWrite.All'
     }

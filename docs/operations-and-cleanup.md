@@ -4,7 +4,7 @@
 
 Review `reports/azd-risk-ca-plan.json` before enablement and `reports/azd-risk-ca-applied.json` after deployment. Confirm all nine policies in the Conditional Access portal, run What If tests, review sign-in logs, and validate the emergency access path.
 
-Postprovision rereads every managed policy by recorded object ID and compares normalized desired request shape with actual Graph state. It writes `reports/azd-risk-ca-applied.json` and fails on any difference. Policy application is compensating-transactional: a later Graph write restores objects changed during that run in reverse order. If compensation is incomplete, the checkpoint remains for explicit cleanup and the deployment reports affected actions.
+Preprovision writes `reports/azd-risk-ca-historical-impact.json` with batched Graph counts and Identity Protection investigation links. Unavailable count endpoints are recorded as unavailable rather than zero and do not block the report-only plan. Postprovision rereads every managed policy by recorded object ID and compares normalized desired request shape with actual Graph state. It writes `reports/azd-risk-ca-applied.json` and fails on any difference. Policy application is compensating-transactional: a later Graph write restores objects changed during that run in reverse order. If compensation is incomplete, the checkpoint remains for explicit cleanup and the deployment reports affected actions.
 
 ## Rerun and troubleshoot
 

@@ -22,7 +22,7 @@ Device registration never uses Block. Set `AZD_CA_USE_TAP_AUTH_STRENGTH=true` to
 
 ## Safe rollout
 
-Provisioning defaults every policy to `enabledForReportingButNotEnforced`. Review the generated plan and applied report, inspect sign-in logs across a normal access cycle, and use Conditional Access What If for administrators, internal users, guests, registration actions, and emergency accounts. Only then set `AZD_CA_POLICY_STATE=enabled`; the hook requires an exact tenant-ID confirmation.
+Provisioning defaults every policy to `enabledForReportingButNotEnforced`. Review the generated plan, the [risk-exposure summary](historical-impact.md), its linked Identity Protection reports, and the applied report; inspect sign-in logs across a normal access cycle; and use Conditional Access What If for administrators, internal users, guests, registration actions, and emergency accounts. Only then set `AZD_CA_POLICY_STATE=enabled`; the hook requires an exact tenant-ID confirmation.
 
 An existing emergency-access group is preferred. If it is omitted, the signed-in operator is excluded as a temporary single-user failsafe. A same-name object is never treated as owned automatically; set `AZD_CA_ADOPT_EXISTING=true` only after reviewing it.
 

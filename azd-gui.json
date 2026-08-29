@@ -12,7 +12,7 @@
   "connections": [
     { "id": "azd", "name": "Azure Developer CLI", "required": true, "reason": "Manage environment values and optional Azure notification resources." },
     { "id": "azureCli", "name": "Azure CLI", "required": true, "scopes": ["https://management.azure.com/.default"], "reason": "Resolve the selected subscription and tenant." },
-    { "id": "graphPowerShell", "name": "Microsoft Graph PowerShell", "required": true, "scopes": ["Policy.Read.All", "Policy.ReadWrite.ConditionalAccess", "Group.Read.All", "RoleManagement.Read.Directory", "User.Read"], "reason": "Plan and reconcile Conditional Access. The normal WAM/browser connection requests administrator consent when these privileged delegated scopes have not been granted." }
+    { "id": "graphPowerShell", "name": "Microsoft Graph PowerShell", "required": true, "scopes": ["AuditLog.Read.All", "Group.Read.All", "IdentityRiskyUser.Read.All", "Policy.Read.All", "Policy.ReadWrite.ConditionalAccess", "RoleManagement.Read.Directory", "User.Read"], "reason": "Count historical sign-in risk events and current risky users, then plan and reconcile Conditional Access. The normal WAM/browser connection requests administrator consent when these privileged delegated scopes have not been granted." }
   ],
   "configuration": {
     "groups": [
