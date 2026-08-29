@@ -5,6 +5,22 @@ Describe 'Administrator documentation and deployment packaging' {
         $script:notifications = Get-Content (Join-Path $script:root 'scripts/AzdRiskCa.Notifications.psm1') -Raw
         $script:postprovision = Get-Content (Join-Path $script:root 'scripts/Post-Provision.ps1') -Raw
         $script:configurationGuide = Get-Content (Join-Path $script:root 'docs/configuration.md') -Raw
+        $script:policyGuide = Get-Content (Join-Path $script:root 'docs/policies-and-safety.md') -Raw
+    }
+
+    It 'keeps every deployed policy definition in this repository' {
+        $manifest = Get-Content (Join-Path $script:root 'policies/manifest.json') -Raw | ConvertFrom-Json
+        $manifest.schemaVersion | Should -Be '1.0'
+        @($manifest.policies).Count | Should -Be 9
+        @($manifest.policies | Sort-Object -Unique).Count | Should -Be 9
+        foreach ($file in $manifest.policies) {
+            $path = Join-Path $script:root "policies/$file"
+            (Test-Path -LiteralPath $path -PathType Leaf) | Should -BeTrue
+            $definition = Get-Content -LiteralPath $path -Raw | ConvertFrom-Json
+            $definition.displayName | Should -Be ([IO.Path]::GetFileNameWithoutExtension($file))
+        }
+        $script:policyGuide | Should -Not -Match 'nathanmcnulty/nathanmcnulty'
+        $script:policyGuide | Should -Match 'No policy definition is downloaded from another repository'
     }
 
     It 'keeps the administrator quickstart free of Node prerequisites' {

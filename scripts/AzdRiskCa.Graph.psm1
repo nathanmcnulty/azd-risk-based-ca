@@ -177,17 +177,28 @@ function Get-AzdRiskCaPolicyBodies {
     [CmdletBinding()] param([Parameter(Mandatory)][object]$Configuration, [Parameter(Mandatory)][string[]]$RoleIds, [Parameter(Mandatory)][AllowEmptyCollection()][string[]]$ExcludeGroups, [Parameter(Mandatory)][string]$AuthenticationStrengthId, [AllowEmptyCollection()][string[]]$ExcludeUsers=@())
     $adminGroups = if ($Configuration.AdminCoverageGroupId) { @($Configuration.AdminCoverageGroupId) } else { @() }
     $common = @{ State=$Configuration.PolicyState; RoleIds=$RoleIds; AdminGroups=$adminGroups; ExcludeGroups=$ExcludeGroups; ExcludeUsers=$ExcludeUsers }
-    return @(
-        New-AzdRiskCaPolicyBody @common -DisplayName 'Admin-SignInRisk-High-Block' -Scope admin -RiskType signIn -RiskLevels high -Control block
-        New-AzdRiskCaPolicyBody @common -DisplayName 'Admin-SignInRisk-LowMedium-RequireMFA' -Scope admin -RiskType signIn -RiskLevels low,medium -Control mfa
-        New-AzdRiskCaPolicyBody @common -DisplayName 'Admin-UserRisk-MediumHigh-Block' -Scope admin -RiskType user -RiskLevels medium,high -Control block
-        New-AzdRiskCaPolicyBody @common -DisplayName 'User-SignInRisk-MediumHigh-RequireMFA' -Scope all -RiskType signIn -RiskLevels medium,high -Control mfa
-        New-AzdRiskCaPolicyBody @common -DisplayName 'User-UserRisk-High-RiskRemediation' -Scope internal -RiskType user -RiskLevels high -Control riskRemediation
-        New-AzdRiskCaPolicyBody @common -DisplayName 'User-UserRisk-Any-Block-SecurityInfoRegistration' -Scope all -RiskType user -RiskLevels low,medium,high -Control block -Target registerSecurityInfo
-        New-AzdRiskCaPolicyBody @common -DisplayName 'User-SignInRisk-Any-Block-SecurityInfoRegistration' -Scope all -RiskType signIn -RiskLevels low,medium,high -Control block -Target registerSecurityInfo
-        New-AzdRiskCaPolicyBody @common -DisplayName 'User-UserRisk-Any-RequireStrongAuth-DeviceRegistration' -Scope all -RiskType user -RiskLevels low,medium,high -Control strength -Target registerDevice -AuthenticationStrengthId $AuthenticationStrengthId
-        New-AzdRiskCaPolicyBody @common -DisplayName 'User-SignInRisk-Any-RequireStrongAuth-DeviceRegistration' -Scope all -RiskType signIn -RiskLevels low,medium,high -Control strength -Target registerDevice -AuthenticationStrengthId $AuthenticationStrengthId
-    )
+    $policyDirectory = Join-Path (Split-Path $PSScriptRoot -Parent) 'policies'
+    $manifestPath = Join-Path $policyDirectory 'manifest.json'
+    if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) { throw "Conditional Access policy manifest was not found at '$manifestPath'." }
+    $manifest = Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json -Depth 20
+    $files = @($manifest.policies)
+    if ($manifest.schemaVersion -ne '1.0' -or $files.Count -ne 9 -or @($files | Sort-Object -Unique).Count -ne 9) { throw 'Conditional Access policy manifest must contain exactly nine unique policy definitions using schema version 1.0.' }
+
+    return @($files | ForEach-Object {
+        $path = Join-Path $policyDirectory ([string]$_)
+        if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "Conditional Access policy definition was not found at '$path'." }
+        $definition = Get-Content -LiteralPath $path -Raw | ConvertFrom-Json -Depth 20
+        $parameters = @{
+            DisplayName = [string]$definition.displayName
+            Scope = [string]$definition.scope
+            RiskType = [string]$definition.riskType
+            RiskLevels = @($definition.riskLevels)
+            Control = [string]$definition.control
+            Target = [string]$definition.target
+        }
+        if ($parameters.Control -eq 'strength') { $parameters.AuthenticationStrengthId = $AuthenticationStrengthId }
+        New-AzdRiskCaPolicyBody @common @parameters
+    })
 }
 
 function Resolve-AzdRiskCaAuthenticationStrength {

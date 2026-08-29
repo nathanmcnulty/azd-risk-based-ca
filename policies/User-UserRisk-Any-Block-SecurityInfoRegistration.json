@@ -1,0 +1,8 @@
+{
+  "displayName": "User-UserRisk-Any-Block-SecurityInfoRegistration",
+  "scope": "all",
+  "riskType": "user",
+  "riskLevels": ["low", "medium", "high"],
+  "control": "block",
+  "target": "registerSecurityInfo"
+}

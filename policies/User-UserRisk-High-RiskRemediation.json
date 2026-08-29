@@ -1,0 +1,8 @@
+{
+  "displayName": "User-UserRisk-High-RiskRemediation",
+  "scope": "internal",
+  "riskType": "user",
+  "riskLevels": ["high"],
+  "control": "riskRemediation",
+  "target": "applications"
+}

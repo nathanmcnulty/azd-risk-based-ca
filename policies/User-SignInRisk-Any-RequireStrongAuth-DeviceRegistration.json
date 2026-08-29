@@ -1,0 +1,8 @@
+{
+  "displayName": "User-SignInRisk-Any-RequireStrongAuth-DeviceRegistration",
+  "scope": "all",
+  "riskType": "signIn",
+  "riskLevels": ["low", "medium", "high"],
+  "control": "strength",
+  "target": "registerDevice"
+}

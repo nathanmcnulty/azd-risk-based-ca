@@ -1,0 +1,8 @@
+{
+  "displayName": "User-SignInRisk-Any-Block-SecurityInfoRegistration",
+  "scope": "all",
+  "riskType": "signIn",
+  "riskLevels": ["low", "medium", "high"],
+  "control": "block",
+  "target": "registerSecurityInfo"
+}
