@@ -361,14 +361,28 @@ function Invoke-AzdRiskCaApply {
 function Test-AzdRiskCaAppliedState {
     [CmdletBinding()] param([Parameter(Mandatory)][object]$Plan, [Parameter(Mandatory)][object]$State)
     $failures=[System.Collections.Generic.List[string]]::new()
-    foreach ($policy in @($Plan.policies)) {
-        $record=Get-AzdRiskCaProperty $State.policies $policy.displayName
-        try { $actual=Invoke-AzdRiskCaGraphRequest GET (Get-AzdRiskCaPolicyUri $policy.body ([string]$record.id)) } catch { $failures.Add("$($policy.displayName): could not re-read") ; continue }
-        $desired=$policy.body | ConvertTo-Json -Depth 100 | ConvertFrom-Json -Depth 100
-        $desiredStrength=Get-AzdRiskCaProperty $desired.grantControls 'authenticationStrength'
-        if ($desiredStrength -and $desiredStrength.id -eq '__CREATED_TAP_STRENGTH__') { $desiredStrength.id=$State.authenticationStrength.id }
-        if (-not (Test-AzdRiskCaEquivalent $desired $actual)) { $failures.Add("$($policy.displayName): desired and actual differ") }
+    $pending=@($Plan.policies)
+    $lastFailure=@{}
+    for ($attempt=1; $attempt -le 6 -and $pending.Count -gt 0; $attempt++) {
+        $retry=[System.Collections.Generic.List[object]]::new()
+        foreach ($policy in $pending) {
+            $record=Get-AzdRiskCaProperty $State.policies $policy.displayName
+            try {
+                $actual=Invoke-AzdRiskCaGraphRequest GET (Get-AzdRiskCaPolicyUri $policy.body ([string]$record.id))
+                $desired=$policy.body | ConvertTo-Json -Depth 100 | ConvertFrom-Json -Depth 100
+                $desiredStrength=Get-AzdRiskCaProperty $desired.grantControls 'authenticationStrength'
+                if ($desiredStrength -and $desiredStrength.id -eq '__CREATED_TAP_STRENGTH__') { $desiredStrength.id=$State.authenticationStrength.id }
+                if (Test-AzdRiskCaEquivalent $desired $actual) { $lastFailure.Remove($policy.displayName); continue }
+                $lastFailure[$policy.displayName]="$($policy.displayName): desired and actual differ"
+            } catch {
+                $lastFailure[$policy.displayName]="$($policy.displayName): could not re-read"
+            }
+            $retry.Add($policy)
+        }
+        $pending=@($retry)
+        if ($pending.Count -gt 0 -and $attempt -lt 6) { Start-Sleep -Seconds ($attempt * 2) }
     }
+    foreach ($policy in $pending) { $failures.Add([string]$lastFailure[$policy.displayName]) }
     return [pscustomobject]@{ valid=($failures.Count -eq 0); failures=@($failures) }
 }
 
