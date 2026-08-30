@@ -12,6 +12,8 @@ The batch counts:
 
 Sign-in requests filter `riskLevelDuringSignIn`, the risk available when Conditional Access evaluated the sign-in, and explicitly include interactive and noninteractive user events. Risky-user requests use the Identity Protection portal predicate: `atRisk` or `confirmedCompromised`, not deleted, and at the applicable policy risk level. Graph can execute up to 20 requests in a JSON batch; this report uses five independent GET subrequests.
 
+This is not a crawl of the full Identity Protection reports. The implementation queries `auditLogs/signIns` for the previous 30 days and `identityProtection/riskyUsers` without a date filter, so the latter is a current snapshot. It does not query `riskyUsers/{id}/history` or enumerate identities. Microsoft currently documents default retention of 30 days for Entra audit/sign-in logs, 90 days for P2 risky sign-ins, and no limit for risky users; the 90-day portal availability (and any longer tenant-specific retention) is not automatically used by this report. A 180-day window should not be assumed.
+
 ## What the counts mean
 
 Sign-in measurements count events, not distinct users. One person can produce several events. Risky-user measurements count the current actionable risky-user records and are not a historical list of everyone who reached that risk level during the reporting period.

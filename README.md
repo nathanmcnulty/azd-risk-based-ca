@@ -8,7 +8,7 @@ Deploy a safe, report-only-first baseline of nine Microsoft Entra Conditional Ac
 This template helps an administrator:
 
 - establish a report-only baseline for nine risk policies;
-- estimate 30-day tenant-specific impact before enabling enforcement;
+- estimate tenant risk exposure from the previous 30 days of user sign-ins plus a current risky-user snapshot;
 - deliver optional administrator and user notifications; and
 - migrate from legacy Identity Protection risk policies with rollback coverage.
 
@@ -47,7 +47,7 @@ Before deployment changes are applied, the hook writes a fast risk-exposure summ
 - Optional Teams delivery through a tenant-local managed connection or an existing Teams Workflow webhook.
 - Optional Graph risk-detection polling through an Azure Functions Flex Consumption app, or Log Analytics scheduled alerting when the workspace already receives the required risk tables.
 - Local deployment reports and ownership-aware state for reconciliation and cleanup.
-- A read-only, batched risk-exposure summary based on 30-day sign-in risk and current risky-user counts.
+- A read-only, batched risk-exposure summary based on previous-30-day sign-in risk events and current risky-user counts.
 
 The default is report-only policy state and no notification backend. See [configuration](docs/configuration.md) to choose notification and enforcement settings.
 
