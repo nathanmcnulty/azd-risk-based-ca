@@ -1,3 +1,4 @@
 azd-components.lock.json text eol=lf
+schemas/azd-components-lock.schema.json text eol=lf
 scripts/vendor/** text eol=lf
 contracts/notifications/** text eol=lf

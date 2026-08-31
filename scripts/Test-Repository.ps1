@@ -68,13 +68,11 @@ foreach ($relativePath in $trackedJson) {
         Out-Null
 }
 
-$componentLock = Get-Content -LiteralPath (Join-Path $repositoryRoot 'azd-components.lock.json') -Raw |
-    ConvertFrom-Json -Depth 100
-if ($componentLock.manifestVersion -ne '1.0') {
-    throw 'azd-components.lock.json must use manifestVersion 1.0.'
-}
-if ($null -eq $componentLock.components) {
-    throw 'azd-components.lock.json must contain a components array.'
+$componentLockPath = Join-Path $repositoryRoot 'azd-components.lock.json'
+$componentLockSchemaPath = Join-Path $repositoryRoot 'schemas/azd-components-lock.schema.json'
+$componentLockJson = Get-Content -LiteralPath $componentLockPath -Raw
+if (-not ($componentLockJson | Test-Json -SchemaFile $componentLockSchemaPath -ErrorAction Stop)) {
+    throw 'azd-components.lock.json does not satisfy the checked-in component lock schema.'
 }
 
 Write-Host 'Running repository Pester tests without tenant access.'
@@ -105,16 +103,38 @@ Invoke-CheckedCommand -Tool 'npm audit' -Action {
 }
 
 Write-Host 'Building the root Bicep template to stdout.'
-Invoke-CheckedCommand -Tool 'az bicep version' -Action {
-    & az bicep version | Out-Null
+$bicepVersionOutput = (& az bicep version 2>&1 | Out-String).Trim()
+if ($LASTEXITCODE -ne 0) {
+    throw "az bicep version failed with exit code $LASTEXITCODE."
+}
+if ($bicepVersionOutput -notmatch '^Bicep CLI version 0\.46\.1(?:\s|$)') {
+    throw "Bicep CLI v0.46.1 is required; found: $bicepVersionOutput"
 }
 Invoke-CheckedCommand -Tool 'az bicep build' -Action {
-    & az bicep build --file (Join-Path $repositoryRoot 'infra/main.bicep') --stdout | Out-Null
+    & az bicep build --file (Join-Path $repositoryRoot 'infra/main.bicep') --stdout --no-restore | Out-Null
 }
 
-Write-Host 'Checking the working diff for whitespace errors.'
-Invoke-CheckedCommand -Tool 'git diff --check' -Action {
+Write-Host 'Checking committed and working changes for whitespace errors.'
+Invoke-CheckedCommand -Tool 'git show --check HEAD' -Action {
+    & git -C $repositoryRoot show --check --format= HEAD
+}
+Invoke-CheckedCommand -Tool 'git diff --check (working tree)' -Action {
     & git -C $repositoryRoot diff --check
 }
+Invoke-CheckedCommand -Tool 'git diff --cached --check' -Action {
+    & git -C $repositoryRoot diff --cached --check
+}
 
-Write-Host "Repository validation passed: $($pesterResult.PassedCount) Pester tests plus PowerShell, JSON, Node, npm audit, Bicep, and whitespace checks."
+$baseReference = if ($env:GITHUB_BASE_REF) { "origin/$($env:GITHUB_BASE_REF)" } else { 'origin/main' }
+& git -C $repositoryRoot rev-parse --verify --quiet "$baseReference^{commit}" 2>$null | Out-Null
+if ($LASTEXITCODE -eq 0) {
+    $mergeBase = (& git -C $repositoryRoot merge-base HEAD $baseReference).Trim()
+    if ($LASTEXITCODE -ne 0 -or -not $mergeBase) {
+        throw "Unable to determine the merge base with $baseReference."
+    }
+    Invoke-CheckedCommand -Tool "git diff --check $mergeBase..HEAD" -Action {
+        & git -C $repositoryRoot diff --check "$mergeBase..HEAD"
+    }
+}
+
+Write-Host "Repository validation passed: $($pesterResult.PassedCount) Pester tests plus PowerShell, schema-constrained JSON, Node, npm audit, pinned Bicep, and committed/working whitespace checks."

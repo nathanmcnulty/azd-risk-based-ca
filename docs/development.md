@@ -8,7 +8,7 @@ PowerShell tests and Bicep validation do not authenticate to or mutate a tenant:
 ./scripts/Test-Repository.ps1
 ```
 
-The validation entry point parses and analyzes PowerShell, validates tracked JSON, runs the Pester and Node test suites, audits production npm dependencies, compiles Bicep, and checks the diff for whitespace errors. It requires PowerShell 7, Node.js 22, Azure CLI with Bicep v0.46.1, Pester 5.7.1 or later, and PSScriptAnalyzer 1.25.0 or later. These are contributor/test dependencies and are not administrator deployment prerequisites.
+The validation entry point parses and analyzes PowerShell, validates tracked JSON and the component inventory against its checked-in schema, runs the Pester and Node test suites, audits production npm dependencies, compiles Bicep without restoring external modules, and checks both committed and working changes for whitespace errors. It requires PowerShell 7, Node.js 22, Azure CLI with exactly Bicep v0.46.1, Pester 5.7.1 or later, and PSScriptAnalyzer 1.25.0 or later. These are contributor/test dependencies and are not administrator deployment prerequisites.
 
 The repository-level `azd-components.lock.json` is the inventory used by `azd-reference` governance tooling. An empty `components` array is intentional until this solution adopts exact, versioned component files; do not list similar solution-owned code as an adopted component.
 
