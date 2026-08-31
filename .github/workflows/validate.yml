@@ -1,4 +1,4 @@
-name: Validation
+name: Validate template
 
 on:
   pull_request:
@@ -15,42 +15,32 @@ concurrency:
 
 jobs:
   validate:
-    timeout-minutes: 20
-    runs-on: windows-latest
-    defaults:
-      run:
-        shell: pwsh
+    name: Validate (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    timeout-minutes: 30
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 22
           cache: npm
           cache-dependency-path: src/risk-notification-poller/package-lock.json
-      - name: Install Bicep
-        run: az bicep install
-      - name: Compile Bicep
-        run: az bicep build --file infra/main.bicep --stdout | Out-Null
-      - name: Validate PowerShell and JSON
+
+      - name: Install repository validation dependencies
+        shell: pwsh
         run: |
+          $ErrorActionPreference = 'Stop'
           Install-Module PSScriptAnalyzer -RequiredVersion 1.25.0 -Force -Scope CurrentUser
-          $parseErrors = @()
-          Get-ChildItem ./scripts -Recurse -File | Where-Object Extension -in '.ps1', '.psm1' | ForEach-Object {
-            $tokens = $null
-            $errors = $null
-            [System.Management.Automation.Language.Parser]::ParseFile($_.FullName, [ref]$tokens, [ref]$errors) | Out-Null
-            $parseErrors += @($errors)
-          }
-          if ($parseErrors.Count) { throw ($parseErrors | Out-String) }
-          Get-ChildItem . -Recurse -Filter *.json -File | Where-Object FullName -notlike '*node_modules*' | ForEach-Object {
-            Get-Content $_.FullName -Raw | ConvertFrom-Json -Depth 100 -AsHashtable | Out-Null
-          }
-          $analysis = @(Invoke-ScriptAnalyzer -Path ./scripts -Recurse -Severity Error)
-          if ($analysis.Count) { throw ($analysis | Format-Table | Out-String) }
-      - name: Run PowerShell tests
-        run: |
           Install-Module Pester -RequiredVersion 5.7.1 -Force -Scope CurrentUser
-          Invoke-Pester ./tests -CI
-      - name: Run Function tests
-        working-directory: src/risk-notification-poller
-        run: npm ci && npm test
+          az bicep install --version v0.46.1
+
+      - name: Run offline repository validation
+        shell: pwsh
+        run: ./scripts/Test-Repository.ps1
