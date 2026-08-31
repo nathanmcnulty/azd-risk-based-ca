@@ -1,0 +1,23 @@
+{
+  "title": "Risk-based Conditional Access baseline",
+  "summary": "Deploys a report-only-first baseline of nine Microsoft Entra Conditional Access risk policies with exposure summaries, optional notifications, and guided legacy-policy migration.",
+  "tags": [
+    "Microsoft Entra ID",
+    "Conditional Access",
+    "Identity Protection",
+    "Microsoft Graph",
+    "Azure Developer CLI"
+  ],
+  "highlights": [
+    "Establishes nine normalized risk policies in report-only mode before enforcement.",
+    "Summarizes 30-day risky sign-in events and the current actionable risky-user snapshot.",
+    "Supports optional Teams or Log Analytics notifications with a guided legacy-policy migration path.",
+    "Uses plan-first, ownership-aware controls with rollback coverage and emergency-access guidance."
+  ],
+  "featured": false,
+  "solutionCount": 1,
+  "quickstartCommands": [
+    "azd init --template nathanmcnulty/azd-risk-based-ca",
+    "azd up"
+  ]
+}
