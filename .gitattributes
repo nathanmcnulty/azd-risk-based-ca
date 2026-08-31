@@ -1,0 +1,3 @@
+azd-components.lock.json text eol=lf
+scripts/vendor/** text eol=lf
+contracts/notifications/** text eol=lf
