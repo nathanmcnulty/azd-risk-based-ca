@@ -1,5 +1,24 @@
 {
   "manifestVersion": "1.0",
   "baseline": "2026.08",
-  "components": []
+  "components": [
+    {
+      "id": "azure-monitor-scheduled-query-notifications",
+      "version": "0.1.0",
+      "sourceRepository": "https://github.com/nathanmcnulty/azd-reference",
+      "sourceRevision": "3424613b6b1ba38a1af60c2ab9bea9ef973c5bed",
+      "files": [
+        {
+          "source": "components/bicep/azure-monitor-scheduled-query-notifications/logic-app-action-group.bicep",
+          "target": "infra/vendor/Azd.AzureMonitorNotifications/logic-app-action-group.bicep",
+          "sha256": "90b3dc9bc40c87b88052a021b390db8e7fc960dd7776a3f686ae2ee000b880f9"
+        },
+        {
+          "source": "components/bicep/azure-monitor-scheduled-query-notifications/scheduled-query-alert.bicep",
+          "target": "infra/vendor/Azd.AzureMonitorNotifications/scheduled-query-alert.bicep",
+          "sha256": "fbb1ba6a7caf1085cce8d1a0ae69a98270b2f587aab9370f23fee145ac46968e"
+        }
+      ]
+    }
+  ]
 }
