@@ -78,50 +78,39 @@ resource blobRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
     )
   }
 }
-resource actionGroup 'Microsoft.Insights/actionGroups@2023-01-01' = {
-  name: 'risk-la-${suffix}'
-  location: 'Global'
-  tags: tags
-  properties: {
+module actionGroup '../vendor/Azd.AzureMonitorNotifications/logic-app-action-group.bicep' = {
+  name: 'risk-la-action-group'
+  params: {
+    actionGroupName: 'risk-la-${suffix}'
     groupShortName: 'Entra risk'
-    enabled: true
-    logicAppReceivers: [
-      {
-        name: 'Risk notification workflow'
-        resourceId: workflow.id
-        callbackUrl: listCallbackUrl('${workflow.id}/triggers/manual', '2019-05-01').value
-        useCommonAlertSchema: true
-      }
-    ]
+    logicAppResourceId: workflow.id
+    receiverName: 'Risk notification workflow'
+    logicAppTriggerName: 'manual'
+    tags: tags
   }
 }
-resource alert 'Microsoft.Insights/scheduledQueryRules@2023-12-01' = {
-  name: 'entra-risk-${suffix}'
-  location: workspaceLocation
-  tags: tags
-  properties: {
+
+module alert '../vendor/Azd.AzureMonitorNotifications/scheduled-query-alert.bicep' = {
+  name: 'entra-risk-alert'
+  params: {
+    alertRuleName: 'entra-risk-${suffix}'
+    location: workspaceLocation
+    workspaceResourceId: workspaceResourceId
+    actionGroupResourceId: actionGroup.outputs.actionGroupResourceId
     displayName: 'Microsoft Entra risk detection'
-    description: 'Uses existing RiskyUsers and UserRiskEvents logs; does not create a workspace or require Sentinel.'
+    alertDescription: 'Uses existing RiskyUsers and UserRiskEvents logs; does not create a workspace or require Sentinel.'
+    query: riskQuery
     severity: 2
-    enabled: true
     evaluationFrequency: 'PT5M'
     windowSize: 'PT10M'
-    scopes: [workspaceResourceId]
-    criteria: {
-      allOf: [
-        {
-          query: riskQuery
-          timeAggregation: 'Count'
-          operator: 'GreaterThan'
-          threshold: 0
-          failingPeriods: { numberOfEvaluationPeriods: 1, minFailingPeriodsToAlert: 1 }
-          dimensions: [
-            { name: 'Envelope', operator: 'Include', values: ['*'] }
-          ]
-        }
-      ]
-    }
     autoMitigate: false
-    actions: { actionGroups: [actionGroup.id] }
+    dimensions: [
+      {
+        name: 'Envelope'
+        operator: 'Include'
+        values: ['*']
+      }
+    ]
+    tags: tags
   }
 }
