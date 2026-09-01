@@ -67,7 +67,8 @@ export async function getRiskDetections(token, since, dependencies = {}) {
   const fetcher = dependencies.fetchWithRetryImpl ?? fetchWithRetry;
   const events = [];
   const filter = `detectedDateTime ge ${since.toISOString()}`;
-  let url = `${graphBase}/identityProtection/riskDetections?$filter=${encodeURIComponent(filter)}&$top=100`;
+  const select = 'id,detectedDateTime,activityDateTime,userId,userPrincipalName,userDisplayName,riskEventType,riskDetail,riskLevel,riskState';
+  let url = `${graphBase}/identityProtection/riskDetections?$filter=${encodeURIComponent(filter)}&$select=${select}&$top=500`;
   while (url) {
     const response = await fetcher(url, { headers: { Authorization: `Bearer ${token}` } }, { label: 'Microsoft Graph risk detection query', ...dependencies });
     const page = await response.json();

@@ -8,7 +8,7 @@ Preprovision writes `reports/azd-risk-ca-historical-impact.json` with batched Gr
 
 ## Rerun and troubleshoot
 
-Rerun `azd up` after correcting configuration or consent. A missing Graph module means the local prerequisite was not installed. A Teams connection that is not ready requires the normal browser authorization and another `azd hooks run postprovision`. A Graph notification build failure is reported before Conditional Access policy application; rerun after the local or Azure deployment issue is resolved.
+Rerun `azd up` after correcting configuration or consent. A missing Graph module means the local prerequisite was not installed. A Teams connection that is not ready requires the normal browser authorization and another `azd hooks run postprovision`. If Graph app-role assignment returns 403, involve a **Global Administrator or Privileged Role Administrator** for the Microsoft Graph application permission and ensure the deploying context has its delegated Graph scopes. A Graph notification build failure is reported before Conditional Access policy application; rerun after the local or Azure deployment issue is resolved.
 
 ## Cleanup
 

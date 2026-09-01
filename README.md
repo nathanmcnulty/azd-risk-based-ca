@@ -29,7 +29,7 @@ Install:
 Install-PSResource Microsoft.Graph.Authentication -Scope CurrentUser
 ```
 
-Use a Security Administrator, or a Conditional Access Administrator with the read roles documented in [identity and permissions](docs/identity-and-permissions.md), who can deploy to the selected subscription and consent to the Microsoft Graph permissions requested by the chosen features. Notification modes also create Azure role assignments and therefore need permission to assign roles. Entra ID P2 or Entra Suite licensing is required for risk-based Conditional Access.
+Use a feature operator with Security Administrator, or Conditional Access Administrator plus the read roles documented in [identity and permissions](docs/identity-and-permissions.md), and Azure permission to deploy to the selected subscription. Notification modes also create Azure role assignments and therefore need permission to assign roles. Some environments already have the required Microsoft Graph permissions consented. If Graph consent has not been completed previously, the deployment may require a **Global Administrator or Privileged Role Administrator**. Entra ID P2 or Entra Suite licensing is required for risk-based Conditional Access.
 
 ### Deploy
 

@@ -86,3 +86,47 @@ Describe 'Azure Monitor scheduled-query notification boundary' {
         $script:scheduledQueryAlertModule | Should -Match 'enabled: true'
     }
 }
+
+Describe 'Graph poller solution boundary' {
+    BeforeAll {
+        $script:graphNotifications = Get-Content -LiteralPath (Join-Path $PSScriptRoot '../infra/modules/graph-notifications.bicep') -Raw
+        $script:pollerHost = Get-Content -LiteralPath (Join-Path $PSScriptRoot '../infra/vendor/Azd.FlexScheduledPoller/flex-scheduled-poller-host.bicep') -Raw
+        $script:pollerSource = Get-Content -LiteralPath (Join-Path $PSScriptRoot '../src/risk-notification-poller/src/index.js') -Raw
+    }
+
+    It 'vendors the independently versioned Flex host behind a thin risk wrapper' {
+        $script:graphNotifications | Should -Match "module pollerHost '../vendor/Azd\.FlexScheduledPoller/flex-scheduled-poller-host\.bicep'"
+        $script:graphNotifications | Should -Not -Match "resource\s+\w+\s+'Microsoft\.(?:Web|Storage|Authorization)/"
+        $script:pollerHost | Should -Match "Microsoft\.Web/sites@"
+        $script:pollerHost | Should -Match "Microsoft\.Storage/storageAccounts@"
+    }
+
+    It 'uses the minimum Flex host size and a singleton ceiling while preserving existing state' {
+        $script:graphNotifications | Should -Match 'maximumInstanceCount: 1'
+        $script:graphNotifications | Should -Match 'instanceMemoryMB: 512'
+        $script:pollerHost | Should -Match 'alwaysReady: \[\]'
+        $script:graphNotifications | Should -Match "deploymentContainerName: 'function-releases'"
+        $script:graphNotifications | Should -Match "stateContainerName: 'risk-state'"
+        $script:graphNotifications | Should -Match "deadLetterContainerName: 'risk-dead-letter'"
+        $script:graphNotifications | Should -Match 'blobDeleteRetentionDays: 14'
+    }
+
+    It 'does not pull Azure Monitor or Log Analytics into the polling solution' {
+        $script:graphNotifications | Should -Not -Match 'Microsoft\.OperationalInsights/workspaces'
+        $script:graphNotifications | Should -Not -Match 'Microsoft\.Insights/components'
+        $script:graphNotifications | Should -Not -Match 'APPLICATIONINSIGHTS_CONNECTION_STRING'
+    }
+
+    It 'uses the generic scheduled-poller storage contract' {
+        $script:pollerHost | Should -Match 'AZD_POLLER_STORAGE_ACCOUNT_NAME'
+        $script:pollerHost | Should -Match 'AZD_POLLER_STATE_CONTAINER'
+        $script:pollerHost | Should -Match 'AZD_POLLER_DEAD_LETTER_CONTAINER'
+        $script:graphNotifications | Should -Match "'AZD_CA_STORAGE_ACCOUNT_NAME'"
+        $script:graphNotifications | Should -Match "'AZD_CA_STATE_CONTAINER'"
+        $script:graphNotifications | Should -Match "'AZD_CA_DEAD_LETTER_CONTAINER'"
+        $script:pollerSource | Should -Match 'AZD_POLLER_STORAGE_ACCOUNT_NAME'
+        $script:pollerSource | Should -Match 'AZD_POLLER_STATE_CONTAINER'
+        $script:pollerSource | Should -Match 'AZD_POLLER_DEAD_LETTER_CONTAINER'
+        $script:pollerSource | Should -Not -Match 'AZD_CA_(?:STORAGE_ACCOUNT_NAME|STATE_CONTAINER|DEAD_LETTER_CONTAINER)'
+    }
+}

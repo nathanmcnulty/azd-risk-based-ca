@@ -9,9 +9,9 @@ async function token(resource){
   const response=await fetchWithRetry(endpoint,{headers:{'X-IDENTITY-HEADER':setting('IDENTITY_HEADER')}},{label:'managed identity token request'});
   return (await response.json()).access_token;
 }
-function blobUrl(container,name){ return `https://${setting('AZD_CA_STORAGE_ACCOUNT_NAME')}.blob.core.windows.net/${container}/${name}`; }
+function blobUrl(container,name){ return `https://${setting('AZD_POLLER_STORAGE_ACCOUNT_NAME')}.blob.core.windows.net/${container}/${name}`; }
 async function readState(storageToken){
-  const response=await fetch(blobUrl(setting('AZD_CA_STATE_CONTAINER'),'risk-notification-state.json'),{headers:{Authorization:`Bearer ${storageToken}`,'x-ms-version':'2023-11-03'}});
+  const response=await fetch(blobUrl(setting('AZD_POLLER_STATE_CONTAINER'),'risk-notification-state.json'),{headers:{Authorization:`Bearer ${storageToken}`,'x-ms-version':'2023-11-03'}});
   if(response.status===404)return {etag:null,value:{schemaVersion:'1.0',deliveries:{}}};
   if(!response.ok)throw new Error(`State read failed (${response.status}).`);
   return {etag:response.headers.get('etag'),value:await response.json()};
@@ -41,13 +41,13 @@ export async function pollRiskDetections(_timer,context){
       record.attempts=(record.attempts??0)+1; record.lastAttemptAt=now.toISOString(); record.status='delivered'; record.deliveredAt=new Date().toISOString();
     }catch(error){
       if(recordDeliveryFailure(record,error,now)){
-        await writeBlob(storageToken,setting('AZD_CA_DEAD_LETTER_CONTAINER'),`${delivery.event.eventId}-${delivery.destination}.json`,{schemaVersion:'1.0',destination:delivery.destination,failedAt:new Date().toISOString(),event:delivery.event,error:record.lastError});
+        await writeBlob(storageToken,setting('AZD_POLLER_DEAD_LETTER_CONTAINER'),`${delivery.event.eventId}-${delivery.destination}.json`,{schemaVersion:'1.0',destination:delivery.destination,failedAt:new Date().toISOString(),event:delivery.event,error:record.lastError});
       }
       context.warn(`Delivery failed for event ${delivery.event.eventId}, destination ${delivery.destination}, attempt ${record.attempts}.`);
     }
   }
   if(firstRun)state.seededAt=now.toISOString(); state.lastRunAt=now.toISOString(); pruneState(state,new Date(now.getTime()-7*24*60*60*1000));
-  await writeBlob(storageToken,setting('AZD_CA_STATE_CONTAINER'),'risk-notification-state.json',state,stored.etag);
+  await writeBlob(storageToken,setting('AZD_POLLER_STATE_CONTAINER'),'risk-notification-state.json',state,stored.etag);
   context.log(`Risk poll processed ${events.length} events and attempted ${deliveries.length} destination deliveries${firstRun?' (initial history seeded without delivery)':''}.`);
 }
 

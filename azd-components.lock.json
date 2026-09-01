@@ -19,6 +19,19 @@
           "sha256": "fbb1ba6a7caf1085cce8d1a0ae69a98270b2f587aab9370f23fee145ac46968e"
         }
       ]
+    },
+    {
+      "id": "flex-scheduled-poller-host",
+      "version": "0.1.0",
+      "sourceRepository": "https://github.com/nathanmcnulty/azd-reference",
+      "sourceRevision": "a79ed9ab9ae2ec10ff3d3c50a011d878c9524592",
+      "files": [
+        {
+          "source": "components/bicep/flex-scheduled-poller-host/flex-scheduled-poller-host.bicep",
+          "target": "infra/vendor/Azd.FlexScheduledPoller/flex-scheduled-poller-host.bicep",
+          "sha256": "1440b6e809c4642e3cf9af4cf3f50377a2cadfd9713e7c9e6e2e155a2d1bc70b"
+        }
+      ]
     }
   ]
 }

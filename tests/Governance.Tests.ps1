@@ -36,4 +36,22 @@ Describe 'Component governance baseline' {
             $actual | Should -Be $file.sha256
         }
     }
+
+    It 'pins the Flex scheduled-poller host to its reviewed release and exact vendored bytes' {
+        $lock = Get-Content -LiteralPath $lockPath -Raw | ConvertFrom-Json -AsHashtable
+        $component = @($lock.components | Where-Object { $_.id -eq 'flex-scheduled-poller-host' })
+
+        $component.Count | Should -Be 1
+        $component[0].version | Should -Be '0.1.0'
+        $component[0].sourceRepository | Should -Be 'https://github.com/nathanmcnulty/azd-reference'
+        $component[0].sourceRevision | Should -Be 'a79ed9ab9ae2ec10ff3d3c50a011d878c9524592'
+        @($component[0].files.target) | Should -Be @(
+            'infra/vendor/Azd.FlexScheduledPoller/flex-scheduled-poller-host.bicep'
+        )
+
+        foreach ($file in $component[0].files) {
+            $actual = (Get-FileHash -LiteralPath (Join-Path $repositoryRoot $file.target) -Algorithm SHA256).Hash.ToLowerInvariant()
+            $actual | Should -Be $file.sha256
+        }
+    }
 }
