@@ -107,7 +107,10 @@ $bicepVersionOutput = (& az bicep version 2>&1 | Out-String).Trim()
 if ($LASTEXITCODE -ne 0) {
     throw "az bicep version failed with exit code $LASTEXITCODE."
 }
-if ($bicepVersionOutput -notmatch '^Bicep CLI version 0\.46\.1(?:\s|$)') {
+$bicepVersionLine = $bicepVersionOutput -split '\r?\n' |
+    Where-Object { $_ -match '^\s*Bicep CLI version\s+' } |
+    Select-Object -First 1
+if ($bicepVersionLine -notmatch '^\s*Bicep CLI version 0\.46\.1(?:\s|$)') {
     throw "Bicep CLI v0.46.1 is required; found: $bicepVersionOutput"
 }
 Invoke-CheckedCommand -Tool 'az bicep build' -Action {
