@@ -1,0 +1,193 @@
+{
+  "schemaVersion": "1.0",
+  "solutionId": "azd-risk-based-ca",
+  "status": "implemented",
+  "coverage": "partial",
+  "reviewedOn": "2026-10-02",
+  "requirements": [
+    {
+      "resource": "https://graph.microsoft.com",
+      "kind": "delegated",
+      "permission": "Policy.Read.All",
+      "principal": "deployment-operator",
+      "phase": "deployment",
+      "feature": "core",
+      "defaultEnabled": true,
+      "scope": "tenant",
+      "rationale": "Required by the recorded project capability.",
+      "evidenceState": "documented",
+      "evidence": [
+        {
+          "path": "docs/identity-and-permissions.md",
+          "sha256": "bceb53ffc675ce7c29096c8d0023602c0bc2294b8a46a72a54fd5e4aeb5aa5b4"
+        }
+      ]
+    },
+    {
+      "resource": "https://graph.microsoft.com",
+      "kind": "delegated",
+      "permission": "Policy.ReadWrite.ConditionalAccess",
+      "principal": "deployment-operator",
+      "phase": "deployment",
+      "feature": "core",
+      "defaultEnabled": true,
+      "scope": "tenant",
+      "rationale": "Required by the recorded project capability.",
+      "evidenceState": "documented",
+      "evidence": [
+        {
+          "path": "docs/identity-and-permissions.md",
+          "sha256": "bceb53ffc675ce7c29096c8d0023602c0bc2294b8a46a72a54fd5e4aeb5aa5b4"
+        }
+      ]
+    },
+    {
+      "resource": "https://graph.microsoft.com",
+      "kind": "delegated",
+      "permission": "Group.Read.All",
+      "principal": "deployment-operator",
+      "phase": "deployment",
+      "feature": "core",
+      "defaultEnabled": true,
+      "scope": "tenant",
+      "rationale": "Required by the recorded project capability.",
+      "evidenceState": "documented",
+      "evidence": [
+        {
+          "path": "docs/identity-and-permissions.md",
+          "sha256": "bceb53ffc675ce7c29096c8d0023602c0bc2294b8a46a72a54fd5e4aeb5aa5b4"
+        }
+      ]
+    },
+    {
+      "resource": "https://graph.microsoft.com",
+      "kind": "delegated",
+      "permission": "RoleManagement.Read.Directory",
+      "principal": "deployment-operator",
+      "phase": "deployment",
+      "feature": "core",
+      "defaultEnabled": true,
+      "scope": "tenant",
+      "rationale": "Required by the recorded project capability.",
+      "evidenceState": "documented",
+      "evidence": [
+        {
+          "path": "docs/identity-and-permissions.md",
+          "sha256": "bceb53ffc675ce7c29096c8d0023602c0bc2294b8a46a72a54fd5e4aeb5aa5b4"
+        }
+      ]
+    },
+    {
+      "resource": "https://graph.microsoft.com",
+      "kind": "delegated",
+      "permission": "User.Read",
+      "principal": "deployment-operator",
+      "phase": "deployment",
+      "feature": "core",
+      "defaultEnabled": true,
+      "scope": "tenant",
+      "rationale": "Required by the recorded project capability.",
+      "evidenceState": "documented",
+      "evidence": [
+        {
+          "path": "docs/identity-and-permissions.md",
+          "sha256": "bceb53ffc675ce7c29096c8d0023602c0bc2294b8a46a72a54fd5e4aeb5aa5b4"
+        }
+      ]
+    },
+    {
+      "resource": "https://graph.microsoft.com",
+      "kind": "delegated",
+      "permission": "AuditLog.Read.All",
+      "principal": "deployment-operator",
+      "phase": "deployment",
+      "feature": "core",
+      "defaultEnabled": true,
+      "scope": "tenant",
+      "rationale": "Required by the recorded project capability.",
+      "evidenceState": "documented",
+      "evidence": [
+        {
+          "path": "docs/identity-and-permissions.md",
+          "sha256": "bceb53ffc675ce7c29096c8d0023602c0bc2294b8a46a72a54fd5e4aeb5aa5b4"
+        }
+      ]
+    },
+    {
+      "resource": "https://graph.microsoft.com",
+      "kind": "delegated",
+      "permission": "IdentityRiskyUser.Read.All",
+      "principal": "deployment-operator",
+      "phase": "deployment",
+      "feature": "core",
+      "defaultEnabled": true,
+      "scope": "tenant",
+      "rationale": "Required by the recorded project capability.",
+      "evidenceState": "documented",
+      "evidence": [
+        {
+          "path": "docs/identity-and-permissions.md",
+          "sha256": "bceb53ffc675ce7c29096c8d0023602c0bc2294b8a46a72a54fd5e4aeb5aa5b4"
+        }
+      ]
+    },
+    {
+      "resource": "https://graph.microsoft.com",
+      "kind": "delegated",
+      "permission": "Application.Read.All",
+      "principal": "deployment-operator",
+      "phase": "deployment",
+      "feature": "graph-notifications",
+      "defaultEnabled": false,
+      "scope": "tenant",
+      "rationale": "Required by the recorded project capability.",
+      "evidenceState": "documented",
+      "evidence": [
+        {
+          "path": "docs/identity-and-permissions.md",
+          "sha256": "bceb53ffc675ce7c29096c8d0023602c0bc2294b8a46a72a54fd5e4aeb5aa5b4"
+        }
+      ]
+    },
+    {
+      "resource": "https://graph.microsoft.com",
+      "kind": "delegated",
+      "permission": "AppRoleAssignment.ReadWrite.All",
+      "principal": "deployment-operator",
+      "phase": "deployment",
+      "feature": "graph-notifications",
+      "defaultEnabled": false,
+      "scope": "tenant",
+      "rationale": "Required by the recorded project capability.",
+      "evidenceState": "documented",
+      "evidence": [
+        {
+          "path": "docs/identity-and-permissions.md",
+          "sha256": "bceb53ffc675ce7c29096c8d0023602c0bc2294b8a46a72a54fd5e4aeb5aa5b4"
+        }
+      ]
+    },
+    {
+      "resource": "https://graph.microsoft.com",
+      "kind": "application",
+      "permission": "IdentityRiskEvent.Read.All",
+      "principal": "polling-function",
+      "phase": "runtime",
+      "feature": "graph-notifications",
+      "defaultEnabled": false,
+      "scope": "tenant",
+      "rationale": "Required by the recorded project capability.",
+      "evidenceState": "documented",
+      "evidence": [
+        {
+          "path": "docs/identity-and-permissions.md",
+          "sha256": "bceb53ffc675ce7c29096c8d0023602c0bc2294b8a46a72a54fd5e4aeb5aa5b4"
+        }
+      ]
+    }
+  ],
+  "gaps": [
+    "Azure RBAC scopes, operator/consent roles, cleanup, and optional connector permissions still need a full review.",
+    "User-bound Teams connector consent varies independently; inspect live connector consent before enabling it."
+  ]
+}
