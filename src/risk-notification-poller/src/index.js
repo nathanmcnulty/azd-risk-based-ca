@@ -1,5 +1,5 @@
 import { app } from '@azure/functions';
-import { adminCard, fetchWithRetry, getRiskDetections, planDeliveries, pruneState, recordDeliveryFailure, userCard } from './core.js';
+import { adminCard, fetchWithRetry, getRiskDetections, planDeliveries, planRiskRecoveryWindow, pruneState, recordDeliveryFailure, retainRiskRecoveryGap, userCard } from './core.js';
 
 const graphResource='https://graph.microsoft.com';
 const storageResource='https://storage.azure.com/';
@@ -27,10 +27,11 @@ async function send(workflowUrl,payload,destination){
 }
 
 export async function pollRiskDetections(_timer,context){
-  const now=new Date(); const since=new Date(now.getTime()-24*60*60*1000);
+  const now=new Date();
   const [graphToken,storageToken]=await Promise.all([token(graphResource),token(storageResource)]);
   const stored=await readState(storageToken); const state=stored.value; state.deliveries??={};
-  const events=await getRiskDetections(graphToken,since);
+  const recovery=planRiskRecoveryWindow(now,state);
+  const events=await getRiskDetections(graphToken,recovery.since);
   const userUrl=setting('AZD_CA_USER_TEAMS_WORKFLOW_URL',false);
   const {firstRun,deliveries}=planDeliveries(events,state,Boolean(userUrl));
   for(const delivery of deliveries){
@@ -46,8 +47,13 @@ export async function pollRiskDetections(_timer,context){
       context.warn(`Delivery failed for event ${delivery.event.eventId}, destination ${delivery.destination}, attempt ${record.attempts}.`);
     }
   }
-  if(firstRun)state.seededAt=now.toISOString(); state.lastRunAt=now.toISOString(); pruneState(state,new Date(now.getTime()-7*24*60*60*1000));
+  if(firstRun)state.seededAt=now.toISOString();
+  state.lastRunAt=now.toISOString();
+  state.lastSuccessfulQueryAt=now.toISOString();
+  state.recoveryGap=retainRiskRecoveryGap(state.recoveryGap,recovery.gap);
+  pruneState(state,new Date(now.getTime()-7*24*60*60*1000));
   await writeBlob(storageToken,setting('AZD_POLLER_STATE_CONTAINER'),'risk-notification-state.json',state,stored.etag);
+  if(state.recoveryGap)context.warn(`AZD_POLLER_RECOVERY_GAP ${JSON.stringify(state.recoveryGap)}`);
   context.log(`Risk poll processed ${events.length} events and attempted ${deliveries.length} destination deliveries${firstRun?' (initial history seeded without delivery)':''}.`);
 }
 

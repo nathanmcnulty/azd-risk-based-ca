@@ -1,12 +1,42 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { adminCard, fetchWithRetry, getRiskDetections, normalizeRiskDetection, planDeliveries, recordDeliveryFailure, userCard } from '../src/core.js';
+import { adminCard, fetchWithRetry, getRiskDetections, normalizeRiskDetection, planDeliveries, planRiskRecoveryWindow, recordDeliveryFailure, retainRiskRecoveryGap, userCard } from '../src/core.js';
 
 const raw={id:'event-1',detectedDateTime:'2026-08-19T00:00:00Z',userId:'user-1',userPrincipalName:'person@contoso.com',userDisplayName:'Person',riskEventType:'leakedCredentials',riskLevel:'high',riskState:'atRisk',ipAddress:'192.0.2.1',location:{city:'Seattle'}};
 test('normalizes the versioned envelope',()=>{ const value=normalizeRiskDetection(raw); assert.equal(value.schemaVersion,'1.0'); assert.equal(value.source,'graph'); assert.equal(value.eventId,'event-1'); });
 test('seeds first run without delivery',()=>{ const state={deliveries:{}}; const result=planDeliveries([raw],state,true); assert.equal(result.firstRun,true); assert.equal(result.deliveries.length,0); assert.equal(Object.keys(state.deliveries).length,2); });
 test('deduplicates per destination',()=>{ const state={seededAt:'earlier',deliveries:{'event-1|admin':{status:'delivered'}}}; const result=planDeliveries([raw],state,true); assert.deepEqual(result.deliveries.map(x=>x.destination),['user']); });
 test('accepts delayed events inside the overlap when not previously seen',()=>{ const state={seededAt:'earlier',deliveries:{}}; const delayed={...raw,detectedDateTime:'2026-08-18T03:00:00Z'}; const result=planDeliveries([delayed],state,false); assert.equal(result.deliveries.length,1); });
+test('replays from a durable successful query after a three-day outage',()=>{
+  const now=new Date('2026-08-23T12:00:00Z');
+  const result=planRiskRecoveryWindow(now,{seededAt:'2026-08-01T00:00:00Z',lastSuccessfulQueryAt:'2026-08-20T12:00:00Z'});
+  assert.equal(result.since.toISOString(),'2026-08-20T11:50:00.000Z');
+  assert.equal(result.gap,null);
+});
+test('keeps failed destination events in the replay window after later successful queries',()=>{
+  const now=new Date('2026-08-23T12:00:00Z');
+  const state={
+    seededAt:'2026-08-01T00:00:00Z',lastSuccessfulQueryAt:'2026-08-23T11:55:00Z',
+    deliveries:{'old|admin':{status:'pending',eventDetectedAt:'2026-08-21T09:00:00Z'}},
+  };
+  const result=planRiskRecoveryWindow(now,state);
+  assert.equal(result.since.toISOString(),'2026-08-21T08:50:00.000Z');
+  assert.equal(result.gap,null);
+});
+test('caps recovery at seven days and retains an explicit unresolved gap',()=>{
+  const now=new Date('2026-08-23T12:00:00Z');
+  const result=planRiskRecoveryWindow(now,{seededAt:'2026-08-01T00:00:00Z',lastRunAt:'2026-08-10T12:00:00Z'});
+  assert.equal(result.since.toISOString(),'2026-08-16T12:00:00.000Z');
+  assert.deepEqual(result.gap,{reason:'recoveryLimitExceeded',from:'2026-08-10T12:00:00.000Z',to:'2026-08-16T12:00:00.000Z',detectedAt:'2026-08-23T12:00:00.000Z'});
+  assert.deepEqual(retainRiskRecoveryGap(result.gap,null),result.gap);
+  assert.equal(retainRiskRecoveryGap(result.gap,{...result.gap,to:'2026-08-17T12:00:00.000Z'}).to,'2026-08-17T12:00:00.000Z');
+});
+test('reports a missing or invalid recovery watermark without inventing coverage',()=>{
+  const now=new Date('2026-08-23T12:00:00Z');
+  const result=planRiskRecoveryWindow(now,{seededAt:'2026-08-01T00:00:00Z',lastRunAt:'invalid'});
+  assert.equal(result.since.toISOString(),'2026-08-16T12:00:00.000Z');
+  assert.equal(result.gap.reason,'missingWatermark');
+});
 test('dead-letters only after repeated destination failures',()=>{ const record={status:'pending',attempts:3}; assert.equal(recordDeliveryFailure(record,new Error('transient'),new Date('2026-08-19'),5),false); assert.equal(recordDeliveryFailure(record,new Error('transient'),new Date('2026-08-19'),5),true); assert.equal(record.status,'deadLettered'); });
 test('keeps the user card minimized',()=>{ const text=JSON.stringify(userCard(normalizeRiskDetection(raw))); assert.doesNotMatch(text,/leakedCredentials|192\.0\.2\.1|Seattle|riskLevel/); assert.match(text,/recipientUpn/); });
 test('admin card includes investigation fields',()=>{ const text=JSON.stringify(adminCard(normalizeRiskDetection(raw))); assert.match(text,/event-1/); assert.match(text,/high leakedCredentials/); });
