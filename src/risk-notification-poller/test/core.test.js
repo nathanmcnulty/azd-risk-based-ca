@@ -11,6 +11,22 @@ test('dead-letters only after repeated destination failures',()=>{ const record=
 test('keeps the user card minimized',()=>{ const text=JSON.stringify(userCard(normalizeRiskDetection(raw))); assert.doesNotMatch(text,/leakedCredentials|192\.0\.2\.1|Seattle|riskLevel/); assert.match(text,/recipientUpn/); });
 test('admin card includes investigation fields',()=>{ const text=JSON.stringify(adminCard(normalizeRiskDetection(raw))); assert.match(text,/event-1/); assert.match(text,/high leakedCredentials/); });
 test('uses the largest documented page and only required Graph properties',async()=>{ let requestedUrl=''; const response={ok:true,json:async()=>({value:[raw]})}; const fetchWithRetryImpl=async(url)=>{ requestedUrl=String(url); return response; }; await getRiskDetections('token',new Date('2026-08-18'),{fetchWithRetryImpl}); assert.match(requestedUrl,/\$top=500/); assert.match(requestedUrl,/\$select=id,detectedDateTime,activityDateTime,userId,userPrincipalName,userDisplayName,riskEventType,riskDetail,riskLevel,riskState/); assert.doesNotMatch(requestedUrl,/ipAddress|location|additionalInfo/); });
-test('paginates Graph results',async()=>{ let calls=0; const requested=[]; const response=(body)=>({ok:true,json:async()=>body}); const fetchWithRetryImpl=async(url)=>{ calls+=1; requested.push(String(url)); return calls===1?response({value:[raw],'@odata.nextLink':'next'}):response({value:[{...raw,id:'event-2'}]}); }; const events=await getRiskDetections('token',new Date('2026-08-18'),{fetchWithRetryImpl}); assert.equal(events.length,2); assert.equal(calls,2); assert.equal(requested[1],'next'); });
+test('paginates Graph results on the same collection',async()=>{ let calls=0; const requested=[]; const response=(body)=>({ok:true,json:async()=>body}); const next='https://graph.microsoft.com/v1.0/identityProtection/riskDetections?$skiptoken=second'; const fetchWithRetryImpl=async(url)=>{ calls+=1; requested.push(String(url)); return calls===1?response({value:[raw],'@odata.nextLink':next}):response({value:[{...raw,id:'event-2'}]}); }; const events=await getRiskDetections('token',new Date('2026-08-18'),{fetchWithRetryImpl}); assert.equal(events.length,2); assert.equal(calls,2); assert.equal(requested[1],next); });
+test('rejects external, downgraded, and wrong-route Graph continuations before sending a token',async()=>{
+  for (const next of ['https://example.invalid/collect','http://graph.microsoft.com/v1.0/identityProtection/riskDetections','https://graph.microsoft.com/v1.0/users']) {
+    const requests=[];
+    const fetchWithRetryImpl=async(url,options)=>{ requests.push({url,authorization:options.headers.Authorization}); return {ok:true,json:async()=>({value:[raw],'@odata.nextLink':next})}; };
+    await assert.rejects(getRiskDetections('test-token',new Date('2026-08-18'),{fetchWithRetryImpl}),/outside the expected collection/);
+    assert.equal(requests.length,1);
+    assert.equal(requests[0].authorization,'Bearer test-token');
+  }
+});
+test('fails closed on a cycling Graph continuation',async()=>{
+  const next='https://graph.microsoft.com/v1.0/identityProtection/riskDetections?$skiptoken=same';
+  let calls=0;
+  const fetchWithRetryImpl=async()=>{ calls+=1; return {ok:true,json:async()=>({value:[raw],'@odata.nextLink':next})}; };
+  await assert.rejects(getRiskDetections('token',new Date('2026-08-18'),{fetchWithRetryImpl}),/cycled/);
+  assert.equal(calls,2);
+});
 test('retries throttling without exposing the URL',async()=>{ let calls=0; const fetchImpl=async()=>{calls+=1; return {ok:calls===2,status:calls===1?429:200,headers:{get:()=> '0'}};}; const result=await fetchWithRetry('https://secret.example/token',{},{fetchImpl,delay:async()=>{},label:'Teams admin delivery'}); assert.equal(result.status,200); assert.equal(calls,2); });
 test('redacts callback URLs from terminal errors',async()=>{ const fetchImpl=async()=>({ok:false,status:400,headers:{get:()=>null}}); await assert.rejects(fetchWithRetry('https://secret.example/bearer',{},{fetchImpl,label:'Teams admin delivery'}),(error)=>!error.message.includes('secret.example')&&error.message.includes('Teams admin delivery')); });

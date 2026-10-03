@@ -66,10 +66,21 @@ export async function fetchWithRetry(url, options, { fetchImpl = fetch, attempts
 export async function getRiskDetections(token, since, dependencies = {}) {
   const fetcher = dependencies.fetchWithRetryImpl ?? fetchWithRetry;
   const events = [];
+  const expectedOrigin = new URL(graphBase).origin;
+  const expectedPath = '/v1.0/identityProtection/riskDetections';
+  const seen = new Set();
   const filter = `detectedDateTime ge ${since.toISOString()}`;
   const select = 'id,detectedDateTime,activityDateTime,userId,userPrincipalName,userDisplayName,riskEventType,riskDetail,riskLevel,riskState';
   let url = `${graphBase}/identityProtection/riskDetections?$filter=${encodeURIComponent(filter)}&$select=${select}&$top=500`;
   while (url) {
+    if (seen.size >= 1000) throw new Error('Microsoft Graph risk detection pagination exceeded 1000 pages.');
+    let parsed;
+    try { parsed = new URL(url); } catch { throw new Error('Invalid Microsoft Graph risk detection continuation URL.'); }
+    if (parsed.origin !== expectedOrigin || parsed.pathname !== expectedPath || parsed.username || parsed.password || parsed.hash) {
+      throw new Error('Microsoft Graph risk detection continuation URL is outside the expected collection.');
+    }
+    if (seen.has(parsed.href)) throw new Error('Microsoft Graph risk detection continuation URL cycled.');
+    seen.add(parsed.href);
     const response = await fetcher(url, { headers: { Authorization: `Bearer ${token}` } }, { label: 'Microsoft Graph risk detection query', ...dependencies });
     const page = await response.json();
     events.push(...(page.value ?? []));
