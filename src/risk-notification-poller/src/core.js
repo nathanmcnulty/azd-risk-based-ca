@@ -1,4 +1,58 @@
 const graphBase = 'https://graph.microsoft.com/v1.0';
+const hourMs = 60 * 60 * 1000;
+
+export function planRiskRecoveryWindow(now, state) {
+  const latest = now.getTime();
+  const normalSince = latest - 24 * hourMs;
+  const oldestRecoverable = latest - 7 * 24 * hourMs;
+  const checkpoint = state.lastSuccessfulQueryAt ?? state.lastRunAt;
+  const last = checkpoint ? Date.parse(checkpoint) : Number.NaN;
+  if (!state.seededAt) return { since: new Date(normalSince), gap: null };
+  const pendingTimes = Object.values(state.deliveries ?? {})
+    .filter((record) => record?.status === 'pending')
+    .map((record) => Date.parse(record.eventDetectedAt));
+  if (!Number.isFinite(last) || last > latest || pendingTimes.some((time) => !Number.isFinite(time))) {
+    return { since: new Date(oldestRecoverable), gap: { reason: 'missingWatermark', detectedAt: now.toISOString() } };
+  }
+  const replayFrom = pendingTimes.reduce((earliest, time) => Math.min(earliest, time), last);
+  const gap = replayFrom < oldestRecoverable
+    ? { reason: 'recoveryLimitExceeded', from: new Date(replayFrom).toISOString(), to: new Date(oldestRecoverable).toISOString(), detectedAt: now.toISOString() }
+    : null;
+  return { since: new Date(Math.max(oldestRecoverable, Math.min(normalSince, replayFrom - 10 * 60_000))), gap };
+}
+
+export function retainRiskRecoveryGap(existing, detected) {
+  if (existing && existing.reason === 'recoveryLimitExceeded') {
+    const from = Date.parse(existing.from);
+    const to = Date.parse(existing.to);
+    existing = Number.isFinite(from) && Number.isFinite(to) && from <= to
+      ? {
+        reason: 'recoveryLimitExceeded',
+        from: new Date(from).toISOString(),
+        to: new Date(to).toISOString(),
+        detectedAt: Number.isFinite(Date.parse(existing.detectedAt))
+          ? new Date(existing.detectedAt).toISOString() : new Date().toISOString(),
+      }
+      : { reason: 'missingWatermark', detectedAt: new Date().toISOString() };
+  } else if (existing) {
+    existing = {
+      reason: 'missingWatermark',
+      detectedAt: Number.isFinite(Date.parse(existing.detectedAt))
+        ? new Date(existing.detectedAt).toISOString() : new Date().toISOString(),
+    };
+  }
+  if (!detected) return existing ?? null;
+  if (!existing) return detected;
+  if (existing.reason === 'missingWatermark' || detected.reason === 'missingWatermark') {
+    return { reason: 'missingWatermark', detectedAt: existing.detectedAt ?? detected.detectedAt };
+  }
+  return {
+    reason: 'recoveryLimitExceeded',
+    from: existing.from < detected.from ? existing.from : detected.from,
+    to: existing.to > detected.to ? existing.to : detected.to,
+    detectedAt: existing.detectedAt ?? detected.detectedAt,
+  };
+}
 
 export function normalizeRiskDetection(event) {
   return {

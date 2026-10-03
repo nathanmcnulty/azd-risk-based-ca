@@ -10,6 +10,8 @@ Preprovision writes `reports/azd-risk-ca-historical-impact.json` with batched Gr
 
 Rerun `azd up` after correcting configuration or consent. A missing Graph module means the local prerequisite was not installed. A Teams connection that is not ready requires the normal browser authorization and another `azd hooks run postprovision`. If Graph app-role assignment returns 403, involve a **Global Administrator or Privileged Role Administrator** for the Microsoft Graph application permission and ensure the deploying context has its delegated Graph scopes. A Graph notification build failure is reported before Conditional Access policy application; rerun after the local or Azure deployment issue is resolved.
 
+For Graph polling, monitor Function warnings containing `AZD_POLLER_RECOVERY_GAP` and the persistent `recoveryGap` field in `risk-notification-state.json`. Its `from` and `to` values bound the interval that the seven-day replay could not cover; `missingWatermark` means the previous successful query time is unknown. Reconcile that interval against available Graph/Identity Protection records and destination evidence. Retain the gap marker until the review is complete, then document any missed notifications before clearing it. A successful later poll does not silently erase the gap.
+
 ## Cleanup
 
 ```powershell
