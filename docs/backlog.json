@@ -1,0 +1,173 @@
+{
+  "schemaVersion": "1.0.0",
+  "repository": "nathanmcnulty/azd-risk-based-ca",
+  "sourceRevision": "f0c7340f881ce97df074435db210b3510912a804",
+  "capturedAt": "2026-10-03",
+  "items": [
+    {
+      "id": "RISK-001",
+      "title": "Reconcile this backlog with current source and active work",
+      "kind": "discovery",
+      "priority": "P1",
+      "status": "ready",
+      "wave": 0,
+      "problem": "Plans and implementation evidence are spread across files; the captured source can change while other tasks work.",
+      "scope": [
+        "docs/backlog.json",
+        "docs/backlog.md",
+        "Existing roadmap, execution status, open issues and pull requests (read-only)"
+      ],
+      "acceptance": [
+        "Classify each candidate as implemented, still open, superseded or awaiting evidence; retain source links and reasons.",
+        "Inspect dirty state, remotes, worktrees and local environment presence without reading secrets; avoid duplicate work with active owners.",
+        "Resolve the actual offline validation commands and record exact current default-branch/working-tree provenance; do not copy historical live passes to newer code."
+      ],
+      "validation": [
+        "git status --short",
+        "git remote -v",
+        "git worktree list --porcelain",
+        "Read the applicable instructions and validation workflow; read gh issue list and gh pr list for the named repository using nathanmcnulty. Do not create or modify issues/PRs."
+      ],
+      "dependencies": [],
+      "authorization": "local-only",
+      "components": [],
+      "sources": [
+        "README.md",
+        "https://github.com/nathanmcnulty/azd-risk-based-ca/pull/19",
+        "https://github.com/nathanmcnulty/azd-risk-based-ca/pull/16"
+      ],
+      "evidence": [],
+      "blocker": null
+    },
+    {
+      "id": "RISK-002",
+      "title": "Qualify report-only canary, routes and migration rollback",
+      "kind": "verification",
+      "priority": "P1",
+      "status": "proposed",
+      "wave": 2,
+      "problem": "Policy creation does not establish safe report-only impact, real notifications or legacy-policy migration recovery.",
+      "scope": [
+        "docs/policies-and-safety.md",
+        "scripts/",
+        "tests/"
+      ],
+      "acceptance": [
+        "Use exact selected tenant and emergency exclusions; analyze report-only results before any enabled state.",
+        "Record administrator/user route receipts and retry/deduplication outcomes.",
+        "Test legacy migration/rollback and adopted-object cleanup without treating the backlog as enforcement authorization."
+      ],
+      "validation": [
+        "From the solution root run ./scripts/Test-Repository.ps1",
+        "Run focused tests for changed behavior from tests/; fixtures do not prove live-service or endpoint behavior.",
+        "After separate authorization, retain redacted exact-target live evidence and cleanup results outside public Git. Do not execute live operations from this backlog alone."
+      ],
+      "dependencies": [],
+      "authorization": "tenant-write",
+      "components": [],
+      "sources": [
+        "README.md",
+        "AGENTS.md",
+        "docs/policies-and-safety.md"
+      ],
+      "evidence": [],
+      "blocker": null
+    },
+    {
+      "id": "RISK-003",
+      "title": "Improve optional-feature validation and permission comparison",
+      "kind": "maintenance",
+      "priority": "P2",
+      "status": "proposed",
+      "wave": 2,
+      "problem": "Existing pilot components should make disabled, pending and unhealthy features visible without changing CA policy.",
+      "scope": [
+        "scripts/",
+        "infra/",
+        "tests/",
+        "docs/",
+        "azd-permissions.json"
+      ],
+      "acceptance": [
+        "Keep a feature matrix for baseline, poller and Azure Monitor route choices with exact permission additions.",
+        "Fixtures prove absent workspace, bad receiver, empty audience and state checkpoint failures are explicit.",
+        "Use current component locks; KQL, migration logic and policy behavior remain local."
+      ],
+      "validation": [
+        "From the solution root run ./scripts/Test-Repository.ps1",
+        "Run focused tests for changed behavior from tests/; fixtures do not prove live-service or endpoint behavior."
+      ],
+      "dependencies": [],
+      "authorization": "local-only",
+      "components": [
+        "deployment-validation",
+        "notification-contracts",
+        "azure-monitor-scheduled-query-notifications",
+        "flex-scheduled-poller-host"
+      ],
+      "sources": [
+        "README.md"
+      ],
+      "evidence": [],
+      "blocker": null
+    },
+    {
+      "id": "RISK-004",
+      "title": "Record an explicit recovery gap after notification poller outages over 24 hours",
+      "kind": "discovery",
+      "priority": "P1",
+      "status": "proposed",
+      "wave": 0,
+      "problem": "Open report captured 2026-10-03 during execution reconciliation. Another code-quality task may own an active fix; inspect its PR and current source before dispatch.",
+      "scope": [
+        "Linked issue and current source (read-only)",
+        "Repository-local backlog evidence"
+      ],
+      "acceptance": [
+        "Read the linked issue and current default branch; classify the exact defect, current owner and evidence gap.",
+        "Record a current PR or verified resolution before selecting any implementation; preserve broader feature and live acceptance gates."
+      ],
+      "validation": [
+        "Read current issue and PR state using nathanmcnulty; do not modify or close issues during reconciliation.",
+        "Inspect dirty state and worktrees; resolve the exact current revision and relevant offline commands before implementation."
+      ],
+      "dependencies": [],
+      "authorization": "local-only",
+      "components": [],
+      "sources": [
+        "https://github.com/nathanmcnulty/azd-risk-based-ca/issues/21"
+      ],
+      "evidence": [],
+      "blocker": null
+    },
+    {
+      "id": "RISK-005",
+      "title": "Validate Graph continuation authority before attaching managed identity token",
+      "kind": "discovery",
+      "priority": "P1",
+      "status": "proposed",
+      "wave": 0,
+      "problem": "Open report captured 2026-10-03 during execution reconciliation. Another code-quality task may own an active fix; inspect its PR and current source before dispatch.",
+      "scope": [
+        "Linked issue and current source (read-only)",
+        "Repository-local backlog evidence"
+      ],
+      "acceptance": [
+        "Read the linked issue and current default branch; classify the exact defect, current owner and evidence gap.",
+        "Record a current PR or verified resolution before selecting any implementation; preserve broader feature and live acceptance gates."
+      ],
+      "validation": [
+        "Read current issue and PR state using nathanmcnulty; do not modify or close issues during reconciliation.",
+        "Inspect dirty state and worktrees; resolve the exact current revision and relevant offline commands before implementation."
+      ],
+      "dependencies": [],
+      "authorization": "local-only",
+      "components": [],
+      "sources": [
+        "https://github.com/nathanmcnulty/azd-risk-based-ca/issues/20"
+      ],
+      "evidence": [],
+      "blocker": null
+    }
+  ]
+}
