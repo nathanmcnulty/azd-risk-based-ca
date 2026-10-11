@@ -76,6 +76,7 @@ if (-not ($componentLockJson | Test-Json -SchemaFile $componentLockSchemaPath -E
 }
 
 Write-Host 'Running repository Pester tests without tenant access.'
+& (Join-Path $PSScriptRoot 'Test-NotificationContracts.ps1')
 Import-Module Pester -MinimumVersion 5.7.1 -Force -ErrorAction Stop
 Set-StrictMode -Off
 try {

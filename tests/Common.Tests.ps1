@@ -16,6 +16,22 @@ Describe 'Configuration parsing and safety gates' {
     It 'resolves and tenant-validates copied Teams channel links' { $target=ConvertFrom-AzdRiskCaTeamsChannelLink 'https://teams.microsoft.com/l/channel/19%3Aabc%40thread.tacv2/Alerts?groupId=11111111-1111-1111-1111-111111111111&tenantId=22222222-2222-2222-2222-222222222222' ([guid]'22222222-2222-2222-2222-222222222222'); $target.TeamId | Should -Be '11111111-1111-1111-1111-111111111111'; $target.ChannelId | Should -Be '19:abc@thread.tacv2' }
     It 'rejects a Teams channel from another tenant' { { ConvertFrom-AzdRiskCaTeamsChannelLink 'https://teams.microsoft.com/l/channel/19%3Aabc%40thread.tacv2/Alerts?groupId=11111111-1111-1111-1111-111111111111&tenantId=22222222-2222-2222-2222-222222222222' ([guid]'33333333-3333-3333-3333-333333333333') } | Should -Throw '*does not match deployment tenant*' }
     It 'requires an existing workspace for Log Analytics mode' { $env:AZD_CA_NOTIFICATION_MODE='logAnalytics'; { Get-AzdRiskCaConfiguration } | Should -Throw '*WORKSPACE_RESOURCE_ID*' }
+    It 'rejects a bad receiver URL in each enabled notification mode' -ForEach @('graph','logAnalytics') {
+        $env:AZD_CA_NOTIFICATION_MODE = $_
+        $env:AZD_CA_ADMIN_TEAMS_DELIVERY_MODE = 'workflowWebhook'
+        $env:AZD_CA_ADMIN_TEAMS_WORKFLOW_URL = 'http://receiver.example.test/secret'
+        { Get-AzdRiskCaConfiguration } | Should -Throw '*absolute HTTPS URL*'
+    }
+    It 'does not require optional route inputs when notifications are disabled' {
+        $env:AZD_CA_ADMIN_TEAMS_WORKFLOW_URL = 'not-a-url'
+        $env:AZD_CA_LOG_ANALYTICS_WORKSPACE_RESOURCE_ID = 'not-a-resource'
+        (Get-AzdRiskCaConfiguration).NotificationMode | Should -Be 'none'
+    }
+    It 'requires the workspace location independently of its valid resource ID' {
+        $env:AZD_CA_NOTIFICATION_MODE = 'logAnalytics'
+        $env:AZD_CA_LOG_ANALYTICS_WORKSPACE_RESOURCE_ID = '/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/test/providers/Microsoft.OperationalInsights/workspaces/test'
+        { Get-AzdRiskCaConfiguration } | Should -Throw '*WORKSPACE_LOCATION*'
+    }
     It 'rejects undocumented policy states and pilot mode' { $env:AZD_CA_POLICY_STATE='pilot'; { Get-AzdRiskCaConfiguration } | Should -Throw '*reportOnly, enabled*' }
     It 'rejects device-code authentication' { $env:AZD_CA_GRAPH_AUTHENTICATION_METHOD='deviceCode'; { Get-AzdRiskCaConfiguration } | Should -Throw '*must be one of: browser*' }
     It 'requires an exact tenant-ID confirmation' { Assert-AzdRiskCaTenantConfirmation '11111111-1111-1111-1111-111111111111' '11111111-1111-1111-1111-111111111111'; { Assert-AzdRiskCaTenantConfirmation '11111111-1111-1111-1111-111111111111' '22222222-2222-2222-2222-222222222222' } | Should -Throw '*cancelled*' }
