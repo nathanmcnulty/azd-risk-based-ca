@@ -30,3 +30,7 @@ Runtime notification resources use managed identity where applicable. Callback U
 - [Combine Graph requests with JSON batching](https://learn.microsoft.com/graph/json-batching)
 - [List sign-ins](https://learn.microsoft.com/graph/api/signin-list)
 - [List risky users](https://learn.microsoft.com/graph/api/riskyuser-list)
+
+## Optional feature comparison
+
+See [the notification feature matrix](notification-feature-matrix.md) for mode and route differences, source-derived permission metadata, failure fixtures and remaining live acceptance gates. The partial inventory never authorizes a grant.

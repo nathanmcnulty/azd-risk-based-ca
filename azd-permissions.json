@@ -1,0 +1,269 @@
+{
+  "$schema": "./schemas/permission-requirements.schema.json",
+  "schemaVersion": "1.0",
+  "solutionId": "azd-risk-based-ca",
+  "status": "implemented",
+  "coverage": "partial",
+  "reviewedOn": "2026-10-10",
+  "requirements": [
+    {
+      "resource": "https://graph.microsoft.com",
+      "kind": "delegated",
+      "permission": "AuditLog.Read.All",
+      "principal": "deployment-operator",
+      "phase": "deployment",
+      "feature": "baseline",
+      "defaultEnabled": true,
+      "scope": "target tenant",
+      "rationale": "Requested by Get-AzdRiskCaGraphPermissionScope for the existing planning and policy workflow.",
+      "evidenceState": "code",
+      "evidence": [
+        {
+          "path": "scripts/AzdRiskCa.Authentication.psm1",
+          "sha256": "942608c56a0464dbcf7e6e4a56d08a779686a93bfbe061bd1e219fe7fe3b6239"
+        }
+      ]
+    },
+    {
+      "resource": "https://graph.microsoft.com",
+      "kind": "delegated",
+      "permission": "Group.Read.All",
+      "principal": "deployment-operator",
+      "phase": "deployment",
+      "feature": "baseline",
+      "defaultEnabled": true,
+      "scope": "target tenant",
+      "rationale": "Requested by Get-AzdRiskCaGraphPermissionScope for the existing planning and policy workflow.",
+      "evidenceState": "code",
+      "evidence": [
+        {
+          "path": "scripts/AzdRiskCa.Authentication.psm1",
+          "sha256": "942608c56a0464dbcf7e6e4a56d08a779686a93bfbe061bd1e219fe7fe3b6239"
+        }
+      ]
+    },
+    {
+      "resource": "https://graph.microsoft.com",
+      "kind": "delegated",
+      "permission": "IdentityRiskyUser.Read.All",
+      "principal": "deployment-operator",
+      "phase": "deployment",
+      "feature": "baseline",
+      "defaultEnabled": true,
+      "scope": "target tenant",
+      "rationale": "Requested by Get-AzdRiskCaGraphPermissionScope for the existing planning and policy workflow.",
+      "evidenceState": "code",
+      "evidence": [
+        {
+          "path": "scripts/AzdRiskCa.Authentication.psm1",
+          "sha256": "942608c56a0464dbcf7e6e4a56d08a779686a93bfbe061bd1e219fe7fe3b6239"
+        }
+      ]
+    },
+    {
+      "resource": "https://graph.microsoft.com",
+      "kind": "delegated",
+      "permission": "Policy.Read.All",
+      "principal": "deployment-operator",
+      "phase": "deployment",
+      "feature": "baseline",
+      "defaultEnabled": true,
+      "scope": "target tenant",
+      "rationale": "Requested by Get-AzdRiskCaGraphPermissionScope for the existing planning and policy workflow.",
+      "evidenceState": "code",
+      "evidence": [
+        {
+          "path": "scripts/AzdRiskCa.Authentication.psm1",
+          "sha256": "942608c56a0464dbcf7e6e4a56d08a779686a93bfbe061bd1e219fe7fe3b6239"
+        }
+      ]
+    },
+    {
+      "resource": "https://graph.microsoft.com",
+      "kind": "delegated",
+      "permission": "Policy.ReadWrite.ConditionalAccess",
+      "principal": "deployment-operator",
+      "phase": "deployment",
+      "feature": "baseline",
+      "defaultEnabled": true,
+      "scope": "target tenant",
+      "rationale": "Requested by Get-AzdRiskCaGraphPermissionScope for the existing planning and policy workflow.",
+      "evidenceState": "code",
+      "evidence": [
+        {
+          "path": "scripts/AzdRiskCa.Authentication.psm1",
+          "sha256": "942608c56a0464dbcf7e6e4a56d08a779686a93bfbe061bd1e219fe7fe3b6239"
+        }
+      ]
+    },
+    {
+      "resource": "https://graph.microsoft.com",
+      "kind": "delegated",
+      "permission": "RoleManagement.Read.Directory",
+      "principal": "deployment-operator",
+      "phase": "deployment",
+      "feature": "baseline",
+      "defaultEnabled": true,
+      "scope": "target tenant",
+      "rationale": "Requested by Get-AzdRiskCaGraphPermissionScope for the existing planning and policy workflow.",
+      "evidenceState": "code",
+      "evidence": [
+        {
+          "path": "scripts/AzdRiskCa.Authentication.psm1",
+          "sha256": "942608c56a0464dbcf7e6e4a56d08a779686a93bfbe061bd1e219fe7fe3b6239"
+        }
+      ]
+    },
+    {
+      "resource": "https://graph.microsoft.com",
+      "kind": "delegated",
+      "permission": "User.Read",
+      "principal": "deployment-operator",
+      "phase": "deployment",
+      "feature": "baseline",
+      "defaultEnabled": true,
+      "scope": "target tenant",
+      "rationale": "Requested by Get-AzdRiskCaGraphPermissionScope for the existing planning and policy workflow.",
+      "evidenceState": "code",
+      "evidence": [
+        {
+          "path": "scripts/AzdRiskCa.Authentication.psm1",
+          "sha256": "942608c56a0464dbcf7e6e4a56d08a779686a93bfbe061bd1e219fe7fe3b6239"
+        }
+      ]
+    },
+    {
+      "resource": "https://graph.microsoft.com",
+      "kind": "delegated",
+      "permission": "Application.Read.All",
+      "principal": "consent-operator",
+      "phase": "deployment",
+      "feature": "graph",
+      "defaultEnabled": false,
+      "scope": "target tenant",
+      "rationale": "Graph mode requests this additional scope to resolve and assign the runtime Graph application role.",
+      "evidenceState": "code",
+      "evidence": [
+        {
+          "path": "scripts/AzdRiskCa.Authentication.psm1",
+          "sha256": "942608c56a0464dbcf7e6e4a56d08a779686a93bfbe061bd1e219fe7fe3b6239"
+        }
+      ]
+    },
+    {
+      "resource": "https://graph.microsoft.com",
+      "kind": "delegated",
+      "permission": "AppRoleAssignment.ReadWrite.All",
+      "principal": "consent-operator",
+      "phase": "deployment",
+      "feature": "graph",
+      "defaultEnabled": false,
+      "scope": "target tenant",
+      "rationale": "Graph mode requests this additional scope to resolve and assign the runtime Graph application role.",
+      "evidenceState": "code",
+      "evidence": [
+        {
+          "path": "scripts/AzdRiskCa.Authentication.psm1",
+          "sha256": "942608c56a0464dbcf7e6e4a56d08a779686a93bfbe061bd1e219fe7fe3b6239"
+        }
+      ]
+    },
+    {
+      "resource": "https://graph.microsoft.com",
+      "kind": "application",
+      "permission": "IdentityRiskEvent.Read.All",
+      "principal": "graph-poller-managed-identity",
+      "phase": "runtime",
+      "feature": "graph",
+      "defaultEnabled": false,
+      "scope": "target tenant",
+      "rationale": "The postprovision hook assigns this application role to the Function identity for risk detection collection.",
+      "evidenceState": "code",
+      "evidence": [
+        {
+          "path": "scripts/AzdRiskCa.Notifications.psm1",
+          "sha256": "3aa938d83cfae5d53eeeabb8b1c29c89ad5e5d939269e3080f315851e518302b"
+        }
+      ]
+    },
+    {
+      "resource": "https://storage.azure.com/",
+      "kind": "azure-rbac",
+      "permission": "Storage Blob Data Contributor",
+      "principal": "graph-poller-managed-identity",
+      "phase": "runtime",
+      "feature": "graph",
+      "defaultEnabled": false,
+      "scope": "solution-owned poller storage account",
+      "rationale": "The vendored Flex host assigns this exact role for state and dead-letter blobs; host/deployment shared-key access is a separate gap.",
+      "evidenceState": "code",
+      "evidence": [
+        {
+          "path": "infra/vendor/Azd.FlexScheduledPoller/flex-scheduled-poller-host.bicep",
+          "sha256": "1440b6e809c4642e3cf9af4cf3f50377a2cadfd9713e7c9e6e2e155a2d1bc70b"
+        }
+      ]
+    },
+    {
+      "resource": "https://storage.azure.com/",
+      "kind": "azure-rbac",
+      "permission": "Storage Blob Data Contributor",
+      "principal": "log-analytics-workflow-managed-identity",
+      "phase": "runtime",
+      "feature": "log-analytics",
+      "defaultEnabled": false,
+      "scope": "solution-owned notification storage account",
+      "rationale": "The Logic App identity reads and writes delivery checkpoints and dead letters.",
+      "evidenceState": "code",
+      "evidence": [
+        {
+          "path": "infra/modules/log-analytics-notifications.bicep",
+          "sha256": "e934d258e5117bfcb27c719d077b5b1d96f8399c702285269bd698ec68ebdb34"
+        }
+      ]
+    },
+    {
+      "resource": "https://graph.microsoft.com",
+      "kind": "entra-role",
+      "permission": "Privileged Role Administrator",
+      "principal": "consent-operator",
+      "phase": "deployment",
+      "feature": "graph",
+      "defaultEnabled": false,
+      "scope": "target tenant",
+      "rationale": "Documented supported role for Graph application-role consent; Global Administrator is also documented. This metadata does not grant either role.",
+      "evidenceState": "documented",
+      "evidence": [
+        {
+          "path": "docs/identity-and-permissions.md",
+          "sha256": "58d5081a900f3769f9e921c68981aa63c4918312f3e4410419306594df1ae284"
+        }
+      ]
+    },
+    {
+      "resource": "https://graph.microsoft.com",
+      "kind": "entra-role",
+      "permission": "Security Administrator",
+      "principal": "deployment-operator",
+      "phase": "deployment",
+      "feature": "baseline",
+      "defaultEnabled": true,
+      "scope": "target tenant",
+      "rationale": "Documented role supporting policy writes and exposure reads. Conditional Access Administrator plus the documented read roles is an alternative; these alternatives are not a cumulative grant set.",
+      "evidenceState": "documented",
+      "evidence": [
+        {
+          "path": "docs/identity-and-permissions.md",
+          "sha256": "58d5081a900f3769f9e921c68981aa63c4918312f3e4410419306594df1ae284"
+        }
+      ]
+    }
+  ],
+  "gaps": [
+    "Azure deployment, cleanup, package publication, key access and resource-provider actions are not exhaustively inventoried. Graph mode uses shared keys for Function host/deployment storage; its Blob RBAC row does not cover this authority.",
+    "adminConfigured is an optional route in both graph and logAnalytics modes. Teams managed connector consent, connected-user channel privileges and runtime delegated authority require live tenant-specific qualification; no exact connector permission is inferred.",
+    "Baseline Entra roles are alternatives: Security Administrator or Conditional Access Administrator with Reports Reader and Security Reader. Graph consent additionally supports Global Administrator or Privileged Role Administrator. Recorded representative alternatives are not instructions to assign roles cumulatively.",
+    "Graph and log-analytics are mutually exclusive notification modes. The optional union is comparison metadata, not a recommended grant bundle; the external workflowWebhook route has unknown receiver-side authorization.",
+    "Existing-workspace query access, diagnostic ingestion/licensing prerequisites and Azure Monitor execution authority need independent qualification; no Sentinel permissions or workspace creation are inferred."
+  ]
+}
