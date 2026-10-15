@@ -5,6 +5,6 @@
   "type": "module",
   "main": "src/index.js",
   "scripts": { "test": "node --test" },
-  "dependencies": { "@azure/functions": "^4.8.0" },
+  "dependencies": { "@azure/functions": "^4.16.5" },
   "engines": { "node": ">=22" }
 }
