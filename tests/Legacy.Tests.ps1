@@ -10,7 +10,7 @@ Describe 'Legacy migration lifecycle' {
         $desired=New-AzdRiskCaLegacyBody userRisk $script:capture 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee'; $state=[pscustomobject]@{tenantId='tenant';policies=[pscustomobject]@{userRisk=[pscustomobject]@{id='id';displayName=$desired.displayName;desired=$desired;comparisonHash=Get-AzdRiskCaLegacyHash $desired}}}
         Mock Invoke-AzdRiskCaGraphRequest -ModuleName AzdRiskCa.Legacy { [pscustomobject]@{displayName=$desired.displayName;state='disabled';conditions=$desired.conditions;grantControls=$desired.grantControls} }
         { Invoke-AzdRiskCaLegacyCutover $state tenant $false } | Should -Throw '*drifted*'
-        Assert-MockCalled Invoke-AzdRiskCaGraphRequest -ModuleName AzdRiskCa.Legacy -ParameterFilter {$Method -eq 'PATCH'} -Times 0
+        Should -Invoke Invoke-AzdRiskCaGraphRequest -ModuleName AzdRiskCa.Legacy -ParameterFilter {$Method -eq 'PATCH'} -Times 0
     }
     It 'refuses retirement before a complete cutover' { $migration=[pscustomobject]@{tenantId='tenant';stage='cutoverIncomplete'}; { Invoke-AzdRiskCaLegacyRetire $migration ([pscustomobject]@{tenantId='tenant'}) tenant } | Should -Throw '*not complete*' }
     It 'rejects migration state from another tenant before reading policies' {
@@ -18,14 +18,14 @@ Describe 'Legacy migration lifecycle' {
         $recommended=[pscustomobject]@{tenantId='tenant';policies=[pscustomobject]@{}}
         Mock Invoke-AzdRiskCaGraphRequest -ModuleName AzdRiskCa.Legacy {}
         { Invoke-AzdRiskCaLegacyRetire $migration $recommended tenant } | Should -Throw '*Migration state belongs to a different tenant*'
-        Assert-MockCalled Invoke-AzdRiskCaGraphRequest -ModuleName AzdRiskCa.Legacy -Times 0
+        Should -Invoke Invoke-AzdRiskCaGraphRequest -ModuleName AzdRiskCa.Legacy -Times 0
     }
     It 'rejects recommended state from another tenant before reading policies' {
         $migration=[pscustomobject]@{tenantId='tenant';stage='cutoverComplete';policies=[pscustomobject]@{}}
         $recommended=[pscustomobject]@{tenantId='other';policies=[pscustomobject]@{}}
         Mock Invoke-AzdRiskCaGraphRequest -ModuleName AzdRiskCa.Legacy {}
         { Invoke-AzdRiskCaLegacyRetire $migration $recommended tenant } | Should -Throw '*Recommended policy state belongs to a different tenant*'
-        Assert-MockCalled Invoke-AzdRiskCaGraphRequest -ModuleName AzdRiskCa.Legacy -Times 0
+        Should -Invoke Invoke-AzdRiskCaGraphRequest -ModuleName AzdRiskCa.Legacy -Times 0
     }
     It 'verifies a legacy replica is disabled before recording retirement' {
         $recommendedPolicies=[ordered]@{}
@@ -38,8 +38,8 @@ Describe 'Legacy migration lifecycle' {
         }
         $result=Invoke-AzdRiskCaLegacyRetire $migration $recommended tenant
         $result.stage | Should -Be 'retired'
-        Assert-MockCalled Invoke-AzdRiskCaGraphRequest -ModuleName AzdRiskCa.Legacy -Times 1 -ParameterFilter {$Method -eq 'PATCH' -and $Uri -like '*/legacy-id' -and $Body.state -eq 'disabled'}
-        Assert-MockCalled Invoke-AzdRiskCaGraphRequest -ModuleName AzdRiskCa.Legacy -Times 1 -ParameterFilter {$Method -eq 'GET' -and $Uri -like '*/legacy-id'}
+        Should -Invoke Invoke-AzdRiskCaGraphRequest -ModuleName AzdRiskCa.Legacy -Times 1 -ParameterFilter {$Method -eq 'PATCH' -and $Uri -like '*/legacy-id' -and $Body.state -eq 'disabled'}
+        Should -Invoke Invoke-AzdRiskCaGraphRequest -ModuleName AzdRiskCa.Legacy -Times 1 -ParameterFilter {$Method -eq 'GET' -and $Uri -like '*/legacy-id'}
     }
     It 'enables replicas before recording incomplete portal attestation' {
         $desired=New-AzdRiskCaLegacyBody userRisk $script:capture 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee'
