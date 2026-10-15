@@ -33,12 +33,19 @@ jobs:
           cache: npm
           cache-dependency-path: src/risk-notification-poller/package-lock.json
 
+      - name: Verify PowerShell 7.6 or newer
+        shell: pwsh
+        run: |
+          if ($PSVersionTable.PSVersion -lt [version]'7.6' -or -not [Environment]::Is64BitProcess) {
+            throw "Expected 64-bit PowerShell 7.6 or newer; observed $($PSVersionTable.PSVersion)."
+          }
+
       - name: Install repository validation dependencies
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
           Install-Module PSScriptAnalyzer -RequiredVersion 1.25.0 -Force -Scope CurrentUser
-          Install-Module Pester -RequiredVersion 5.7.1 -Force -Scope CurrentUser
+          Install-Module Pester -RequiredVersion 6.2.0 -Force -Scope CurrentUser
           az bicep install --version v0.46.1
 
       - name: Run offline repository validation

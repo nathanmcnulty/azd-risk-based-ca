@@ -1,3 +1,5 @@
+#Requires -Version 7.6
+
 $ErrorActionPreference='Stop'
 Import-Module (Join-Path $PSScriptRoot 'AzdRiskCa.Common.psm1') -Force
 Import-Module (Join-Path $PSScriptRoot 'AzdRiskCa.Authentication.psm1') -Force
