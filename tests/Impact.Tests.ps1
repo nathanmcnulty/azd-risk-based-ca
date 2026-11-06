@@ -55,7 +55,7 @@ Describe 'Microsoft Graph aggregate risk batch' {
         @($result.policies | Where-Object targetingApplied).Count | Should -Be 0
         $result.investigate.riskyUsers | Should -Be 'https://entra.microsoft.com/#view/Microsoft_AAD_IAM/IdentityProtectionMenuBlade/~/RiskyUsers'
         $result.investigate.riskySignIns | Should -Be 'https://entra.microsoft.com/#view/Microsoft_AAD_IAM/IdentityProtectionMenuBlade/~/RiskySignIns'
-        Assert-MockCalled Invoke-AzdRiskCaGraphRequest -ModuleName AzdRiskCa.Impact -Times 1 -ParameterFilter {
+        Should -Invoke Invoke-AzdRiskCaGraphRequest -ModuleName AzdRiskCa.Impact -Times 1 -ParameterFilter {
             $Method -eq 'POST' -and $Uri -eq 'https://graph.microsoft.com/beta/$batch' -and @($Body.requests).Count -eq 5
         }
     }

@@ -16,7 +16,7 @@ Describe 'Standard cached Graph authentication' {
         }
         $configuration=[pscustomobject]@{NotificationMode='none'}
         Connect-AzdRiskCaGraph ([guid]'11111111-1111-1111-1111-111111111111') $configuration | Out-Null
-        Assert-MockCalled Connect-MgGraph -ModuleName AzdRiskCa.Authentication -Times 1 -ParameterFilter {
+        Should -Invoke Connect-MgGraph -ModuleName AzdRiskCa.Authentication -Times 1 -ParameterFilter {
             $TenantId -eq '11111111-1111-1111-1111-111111111111' -and
             $ContextScope -eq 'CurrentUser' -and
             $null -eq $UseDeviceAuthentication
@@ -39,8 +39,8 @@ Describe 'Standard cached Graph authentication' {
         Mock Get-MgContext -ModuleName AzdRiskCa.Authentication { [pscustomobject]@{TenantId='11111111-1111-1111-1111-111111111111';Scopes=$scopes} }
         $configuration=[pscustomobject]@{NotificationMode='none'}
         Connect-AzdRiskCaGraph ([guid]'11111111-1111-1111-1111-111111111111') $configuration | Out-Null
-        Assert-MockCalled Get-MgContext -ModuleName AzdRiskCa.Authentication -Times 1
-        Assert-MockCalled Invoke-MgGraphRequest -ModuleName AzdRiskCa.Authentication -Times 1 -ParameterFilter {
+        Should -Invoke Get-MgContext -ModuleName AzdRiskCa.Authentication -Times 1
+        Should -Invoke Invoke-MgGraphRequest -ModuleName AzdRiskCa.Authentication -Times 1 -ParameterFilter {
             $Method -eq 'GET' -and $Uri -eq 'https://graph.microsoft.com/v1.0/me?$select=id'
         }
     }
