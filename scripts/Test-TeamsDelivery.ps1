@@ -1,3 +1,5 @@
+#Requires -Version 7.6
+
 param([ValidateSet('admin','user')][string]$Destination='admin', [string]$UserPrincipalName='user@contoso.com')
 $ErrorActionPreference='Stop'; Set-StrictMode -Version Latest
 Import-Module (Join-Path $PSScriptRoot 'AzdRiskCa.Common.psm1') -Force

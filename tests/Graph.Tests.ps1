@@ -30,8 +30,8 @@ Describe 'Applied-state validation consistency' {
         }
         $result=Test-AzdRiskCaAppliedState $script:validationPlan $script:validationState
         $result.valid | Should -BeTrue
-        Assert-MockCalled Invoke-AzdRiskCaGraphRequest -ModuleName AzdRiskCa.Graph -Times 3
-        Assert-MockCalled Start-Sleep -ModuleName AzdRiskCa.Graph -Times 2
+        Should -Invoke Invoke-AzdRiskCaGraphRequest -ModuleName AzdRiskCa.Graph -Times 3
+        Should -Invoke Start-Sleep -ModuleName AzdRiskCa.Graph -Times 2
     }
 
     It 'fails after bounded retries when a policy never becomes readable' {
@@ -39,8 +39,8 @@ Describe 'Applied-state validation consistency' {
         $result=Test-AzdRiskCaAppliedState $script:validationPlan $script:validationState
         $result.valid | Should -BeFalse
         $result.failures | Should -Contain 'Retry policy: could not re-read'
-        Assert-MockCalled Invoke-AzdRiskCaGraphRequest -ModuleName AzdRiskCa.Graph -Times 6
-        Assert-MockCalled Start-Sleep -ModuleName AzdRiskCa.Graph -Times 5
+        Should -Invoke Invoke-AzdRiskCaGraphRequest -ModuleName AzdRiskCa.Graph -Times 6
+        Should -Invoke Start-Sleep -ModuleName AzdRiskCa.Graph -Times 5
     }
 }
 Describe 'Canonical recommended policy payloads' {
@@ -72,7 +72,7 @@ Describe 'Built-in directory role discovery' {
         $roles=@(Get-AzdRiskCaBuiltInRoleTemplateIds)
         $roles.Count | Should -Be 1
         $roles[0].id | Should -Be 'built-in-template'
-        Assert-MockCalled Get-AzdRiskCaGraphCollection -ModuleName AzdRiskCa.Graph -Times 1 -ParameterFilter { $Uri -like '*/roleDefinitions?*' -and $Uri -notmatch '\$filter' }
+        Should -Invoke Get-AzdRiskCaGraphCollection -ModuleName AzdRiskCa.Graph -Times 1 -ParameterFilter { $Uri -like '*/roleDefinitions?*' -and $Uri -notmatch '\$filter' }
     }
 }
 
@@ -82,7 +82,7 @@ Describe 'Tenant-local group validation' {
         Mock Invoke-AzdRiskCaGraphRequest -ModuleName AzdRiskCa.Graph { [pscustomobject]@{id=$groupId;displayName='Emergency access'} }
         $groups=@(Get-AzdRiskCaValidatedGroups @($groupId))
         $groups.Count | Should -Be 1
-        Assert-MockCalled Invoke-AzdRiskCaGraphRequest -ModuleName AzdRiskCa.Graph -Times 1 -ParameterFilter { $Uri -eq "https://graph.microsoft.com/v1.0/groups/${groupId}?`$select=id,displayName" }
+        Should -Invoke Invoke-AzdRiskCaGraphRequest -ModuleName AzdRiskCa.Graph -Times 1 -ParameterFilter { $Uri -eq "https://graph.microsoft.com/v1.0/groups/${groupId}?`$select=id,displayName" }
     }
 }
 
@@ -93,7 +93,7 @@ Describe 'Emergency-access operator fallback' {
         }
         $operator=Get-AzdRiskCaCurrentOperator
         $operator.id | Should -Be 'operator-id'
-        Assert-MockCalled Invoke-AzdRiskCaGraphRequest -ModuleName AzdRiskCa.Graph -Times 1 -ParameterFilter {
+        Should -Invoke Invoke-AzdRiskCaGraphRequest -ModuleName AzdRiskCa.Graph -Times 1 -ParameterFilter {
             $Method -eq 'GET' -and $Uri -eq 'https://graph.microsoft.com/v1.0/me?$select=id,displayName,userPrincipalName'
         }
     }
@@ -128,7 +128,7 @@ Describe 'TAP authentication strength lifecycle' {
         $plan=[pscustomobject]@{tenantId='tenant';configuration=[pscustomobject]@{UseTapAuthenticationStrength=$true};authenticationStrength=[pscustomobject]@{id='tap-id';action='update';body=$body;adopted=$true;existing=[pscustomobject]@{description='old';allowedCombinations=@('temporaryAccessPassOneTime')}};policies=@()}
         Mock Invoke-AzdRiskCaGraphRequest -ModuleName AzdRiskCa.Graph {}
         Invoke-AzdRiskCaApply $plan $null -Confirm:$false | Out-Null
-        Assert-MockCalled Invoke-AzdRiskCaGraphRequest -ModuleName AzdRiskCa.Graph -Times 1 -ParameterFilter {$Method -eq 'POST' -and $Uri -like '*/updateAllowedCombinations' -and $Body.allowedCombinations.Count -eq 2}
+        Should -Invoke Invoke-AzdRiskCaGraphRequest -ModuleName AzdRiskCa.Graph -Times 1 -ParameterFilter {$Method -eq 'POST' -and $Uri -like '*/updateAllowedCombinations' -and $Body.allowedCombinations.Count -eq 2}
     }
 }
 
@@ -144,7 +144,7 @@ Describe 'Cleanup guard' {
         Mock Invoke-AzdRiskCaGraphRequest -ModuleName AzdRiskCa.Graph {}
         Mock Get-AzdRiskCaGraphCollection -ModuleName AzdRiskCa.Graph { @([pscustomobject]@{id='policy-id';displayName='Adopted';state='disabled';conditions=[pscustomobject]@{users=[pscustomobject]@{includeUsers=@('All')}};grantControls=[pscustomobject]@{operator='OR';builtInControls=@('mfa')}}) }
         Remove-AzdRiskCaManagedObjects $state -Confirm:$false
-        Assert-MockCalled Invoke-AzdRiskCaGraphRequest -ModuleName AzdRiskCa.Graph -Times 1 -ParameterFilter {$Method -eq 'PATCH' -and $Uri -like '*/policy-id' -and $Body.state -eq 'disabled'}
+        Should -Invoke Invoke-AzdRiskCaGraphRequest -ModuleName AzdRiskCa.Graph -Times 1 -ParameterFilter {$Method -eq 'PATCH' -and $Uri -like '*/policy-id' -and $Body.state -eq 'disabled'}
     }
     It 'preserves a nested authentication-strength ID in adopted rollback state' {
         $policy=$script:bodies | Where-Object displayName -like '*DeviceRegistration' | Select-Object -First 1
@@ -160,7 +160,7 @@ Describe 'Cleanup guard' {
         Mock Get-AzdRiskCaGraphCollection -ModuleName AzdRiskCa.Graph { @() }
         Mock Invoke-AzdRiskCaGraphRequest -ModuleName AzdRiskCa.Graph {}
         Remove-AzdRiskCaManagedObjects $state -Confirm:$false
-        Assert-MockCalled Invoke-AzdRiskCaGraphRequest -ModuleName AzdRiskCa.Graph -Times 1 -ParameterFilter {$Method -eq 'DELETE' -and $Uri -like '*/tap-id'}
+        Should -Invoke Invoke-AzdRiskCaGraphRequest -ModuleName AzdRiskCa.Graph -Times 1 -ParameterFilter {$Method -eq 'DELETE' -and $Uri -like '*/tap-id'}
     }
 }
 
@@ -170,7 +170,7 @@ Describe 'Fail-closed application' {
         $plan=[pscustomobject]@{tenantId='tenant';configuration=[pscustomobject]@{UseTapAuthenticationStrength=$false};authenticationStrength=[pscustomobject]@{id=$script:strength;action='none'};policies=@([pscustomobject]@{displayName=$policy.displayName;id=$null;action='create';body=$policy;adopted=$false})}
         Mock Invoke-AzdRiskCaGraphRequest -ModuleName AzdRiskCa.Graph { throw 'Graph rejected riskRemediation payload' }
         { Invoke-AzdRiskCaApply $plan $null -Confirm:$false } | Should -Throw '*Graph rejected*'
-        Assert-MockCalled Invoke-AzdRiskCaGraphRequest -ModuleName AzdRiskCa.Graph -Times 1 -ParameterFilter { $Uri -like 'https://graph.microsoft.com/beta/*' }
+        Should -Invoke Invoke-AzdRiskCaGraphRequest -ModuleName AzdRiskCa.Graph -Times 1 -ParameterFilter { $Uri -like 'https://graph.microsoft.com/beta/*' }
     }
     It 'preserves created ownership across an idempotent repeat run' {
         $policy=$script:bodies[0]
