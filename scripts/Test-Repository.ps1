@@ -1,3 +1,5 @@
+#Requires -Version 7.6
+
 [CmdletBinding()]
 param()
 
@@ -77,7 +79,7 @@ if (-not ($componentLockJson | Test-Json -SchemaFile $componentLockSchemaPath -E
 
 Write-Host 'Running repository Pester tests without tenant access.'
 & (Join-Path $PSScriptRoot 'Test-NotificationContracts.ps1')
-Import-Module Pester -RequiredVersion 5.7.1 -Force -ErrorAction Stop
+Import-Module Pester -MinimumVersion 6.2.0 -Force -ErrorAction Stop
 Set-StrictMode -Off
 try {
     $pesterResult = Invoke-Pester -Path (Join-Path $repositoryRoot 'tests') -Output Detailed -PassThru
@@ -85,7 +87,7 @@ try {
 finally {
     Set-StrictMode -Version Latest
 }
-if ($pesterResult.FailedCount -gt 0) {
+if ($pesterResult.Result -ne 'Passed' -or $pesterResult.TotalCount -eq 0) {
     throw "$($pesterResult.FailedCount) Pester test(s) failed."
 }
 
